@@ -5,7 +5,7 @@ import Browser exposing (document)
 import Css exposing (..)
 import Css.Global exposing (..)
 import Css.Media as Media exposing (only, screen, withMedia)
-import Html.Styled exposing (Html, button, div, h1, img, p, span, text)
+import Html.Styled exposing (Html, button, div, h1, h2, img, p, span, text)
 import Html.Styled.Attributes exposing (css, src, style)
 import Html.Styled.Events exposing (onClick)
 import Http
@@ -51,11 +51,61 @@ type Msg
 main : Program () Model Msg
 main =
     document
-        { init = fake
+        { init = init
         , update = update
         , view = view
         , subscriptions = subscriptions
         }
+
+
+finalScore : Quiz -> Maybe Float
+finalScore quiz =
+    quiz.questions
+        |> Array.toList
+        |> List.map (.status >> statusToScoreValue)
+        |> flatten
+        |> Maybe.map List.sum
+
+
+flatten : List (Maybe a) -> Maybe (List a)
+flatten maybes =
+    case maybes of
+        [] ->
+            Just []
+
+        Nothing :: _ ->
+            Nothing
+
+        (Just hd) :: tl ->
+            case flatten tl of
+                Nothing ->
+                    Nothing
+
+                Just tl_ ->
+                    Just (hd :: tl_)
+
+
+statusToScoreValue : QuestionStatus -> Maybe Float
+statusToScoreValue status =
+    case status of
+        Answered score ->
+            Just (scoreToFloat score)
+
+        _ ->
+            Nothing
+
+
+scoreToFloat : Score -> Float
+scoreToFloat score =
+    case score of
+        Correct ->
+            1
+
+        Incorrect ->
+            0
+
+        Half ->
+            0.5
 
 
 quizDecoder : QuestionStatus -> Json.Decoder Quiz
@@ -233,6 +283,7 @@ view model =
                 , maxWidth <| transitionWidth
                 , marginLeft <| auto
                 , marginRight <| auto
+                , fontSize <| rem 1.2
                 ]
             ]
             (body model)
@@ -302,15 +353,23 @@ quizBody quiz =
             text ""
     , div
         [ css
-            [ fontSize <| rem 1.2
-            , property "display" "grid"
-
-            --, property "grid-row-gap" "10px"
+            [ property "display" "grid"
             ]
         ]
         (Array.toList quiz.questions
             |> List.indexedMap questionView
         )
+    , case finalScore quiz of
+        Nothing ->
+            text ""
+
+        Just score ->
+            h2 []
+                [ text <|
+                    "התוצאה הסופית: "
+                        ++ String.fromFloat score
+                        ++ " תשובות נכונות."
+                ]
     ]
 
 
