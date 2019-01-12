@@ -48,7 +48,7 @@ type Msg
 main : Program () Model Msg
 main =
     document
-        { init = init
+        { init = fake
         , update = update
         , view = view
         , subscriptions = subscriptions
@@ -77,6 +77,103 @@ init () =
         HandleGetQuiz
         (quizDecoder AnswerHidden)
     )
+
+
+fakeQuiz =
+    { image = Nothing
+    , questions =
+        Array.fromList
+            [ { answer = "גַּלְגֶּשֶׁת"
+              , question = "בלועזית סקייטבורד, ובעברית?"
+              , status = AnswerHidden
+              }
+            , { answer = "קרדיט"
+              , question = "בעברית מִזְכֶּה, ובלועזית?"
+              , status = AnswerHidden
+              }
+            , { answer = "בתלמוד: על עבד או שפחה שאדונם היכה אותם וגרם להם נזק גופני חמור"
+              , question = "באיזה הקשר נוצר הביטוי \"לצאת בשן ועין\"?"
+              , status = AnswerHidden
+              }
+            , { answer = "בעקבות ספרו של וולף, \"אש וזעם\", שעסק בממשל טראמפ"
+              , question = "בעקבות מה כינה דונלד טראמפ את מייקל וולף \"לוזר גמור\"?"
+              , status = AnswerHidden
+              }
+            , { answer = "קרב קונקורד בתחילת מלחמת העצמאות האמריקאית. בשיר \"המנון קונקורד\" מאת אמרסון"
+              , question = "על איזה אירוע נכתב במקור המשפט \"הירייה שנשמעה ברחבי העולם\"?"
+              , status = AnswerHidden
+              }
+            , { answer = "סרייבו. רצח הארכידוכס פרנץ פרדיננד ואשתו סופיה ב-1914"
+              , question = "באיזו עיר התרחש הרצח שהצית את מלחמת העולם הראשונה?"
+              , status = AnswerHidden
+              }
+            , { answer = "ממפיס, טנסי"
+              , question = "באיזו עיר נרצח מרטין לותר קינג ב-1968?"
+              , status = AnswerHidden
+              }
+            , { answer = "אנטנת הרדיו של ורשה בפולין"
+              , question = "מה היה המבנה הגבוה ביותר בעולם, עד שקרס ב-1991?"
+              , status = AnswerHidden
+              }
+            , { answer = "צמחי בננה"
+              , question = "במה פוגעת מחלת פנמה?"
+              , status = AnswerHidden
+              }
+            , { answer = "קוּק"
+              , question = "מה משותף למנכ\"ל חברת אפל, קבוצת איים באוקיינוס השקט והרב הראשי הראשון?"
+              , status = AnswerHidden
+              }
+            , { answer = "בואי נשתטה ונתחתן"
+              , question = "מהי השורה האחרונה בשיר \"להשתטות לפעמים\", שהתפרסם בביצוע גבי שושן?"
+              , status = AnswerHidden
+              }
+            , { answer = "אביב"
+              , question = "איך קוראים לילד בשיר \"עונות\", ששר אביב גפן?"
+              , status = AnswerHidden
+              }
+            , { answer = "ג'רי מגווייר, שבו שיחקה רנה זלווגר"
+              , question = "בעקבות איזה סרט כתב אריאל הורוביץ את השיר \"רנה\"?"
+              , status = AnswerHidden
+              }
+            , { answer = "פני צלקת. נאמר על ידי הדמות שמשחק אל פאצ'ינו"
+              , question = "באיזה סרט נאמר המשפט \"תגידו שלום לחבר הקטן שלי\"?"
+              , status = AnswerHidden
+              }
+            , { answer = "כוח סיירות חוקר"
+              , question = "מה פשר ראשי התיבות של חבורת כס\"ח בסדרת הספרים מאת גלילה רון־פדר?"
+              , status = AnswerHidden
+              }
+            , { answer = "ארץ יצורי הפרא מאת מוריס סנדק, שבמקור נועד להיקרא \"ארץ סוסי הפרא\""
+              , question = "שמו של איזה ספר ידוע הוחלף מפני שמחברו לא ידע לצייר סוסים?"
+              , status = AnswerHidden
+              }
+            , { answer = "סדרת ספרי \"דמדומים\" מאת סטפני מאייר"
+              , question = "50 גוונים של אפור מאת אי.אל. ג'יימס התחיל בתור פאנפיקשן (ספרות מעריצים). של איזו יצירה?"
+              , status = AnswerHidden
+              }
+            , { answer = "חברים"
+              , question = "בסדרה \"סיפורה של שפחה\", באיזו סדרת טלוויזיה משנות ה-90 צופה שלפרד במחבוא?"
+              , status = AnswerHidden
+              }
+            , { answer = "תרגיע של לארי דיוויד"
+              , question = "באיזו סדרה מנסה הדמות הראשית להפיק מחזמר בשם \"פתווה!\" על סלמן רושדי?"
+              , status = AnswerHidden
+              }
+            , { answer = "טאו טאו"
+              , question = "איזו סדרה עוסקת בדוב פנדה שאמו נוהגת לספר לו סיפורים?"
+              , status = AnswerHidden
+              }
+            , { answer = "חנה דרזנר"
+              , question = "מה שמה המקורי של הזמרת אילנית?"
+              , status = AnswerHidden
+              }
+            ]
+    , title = "באיזו עיר נרצח מרטין לותר קינג ב-1968?"
+    }
+
+
+fake () =
+    ( { quiz = Remote.Success fakeQuiz }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
