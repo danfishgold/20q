@@ -22,10 +22,12 @@ async function get_latest_quiz() {
   const latest_id = latest_url.match(/magazine\/20questions\/([\d\.]+)/)[1];
   const latest_date = latest_element.find("time").attr("datetime");
 
-  const latest_req = await request(base_url + latest_url);
+  const latest_req = await request(
+    base_url + `/magazine/20questions/${latest_id}`
+  );
   const latest_body = cheerio.load(latest_req);
-  const latest_title = latest_body("article.header.h1").text();
-  const latest_image = latest_body("article.figure.img").attr("src");
+  const latest_title = latest_body("main article > header h1").text();
+  const latest_image = latest_body("main article > figure img").attr("src");
 
   const yoanas_xls_url = "/st/inter/DB/heb/20q/20q.xlsx";
   const data_url = "/st/c/work/guy/2018/21q/data.js";
@@ -35,10 +37,11 @@ async function get_latest_quiz() {
   const qna = JSON.parse(data_text)[latest_id];
 
   return {
+    title: latest_title,
+    image: latest_image,
     questions: qna.map(qna => {
       return { question: qna["question"], answer: qna["answer"] };
-    }),
-    image: latest_image
+    })
   };
 }
 
