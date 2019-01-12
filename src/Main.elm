@@ -7,6 +7,7 @@ import Html.Attributes exposing (src, style)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Json
+import Remote exposing (Remote)
 
 
 type alias Model =
@@ -37,43 +38,6 @@ type Score
     = Correct
     | Incorrect
     | Half
-
-
-type Remote data
-    = Loading
-    | Success data
-    | Failure Http.Error
-
-
-remoteMap : (a -> b) -> Remote a -> Remote b
-remoteMap fn remote =
-    case remote of
-        Loading ->
-            Loading
-
-        Success a ->
-            Success (fn a)
-
-        Failure err ->
-            Failure err
-
-
-remoteGet : String -> (Remote data -> msg) -> Json.Decoder data -> Cmd msg
-remoteGet url toMsg decoder =
-    Http.get
-        { url = url
-        , expect = Http.expectJson (toMsg << remoteFromResult) decoder
-        }
-
-
-remoteFromResult : Result Http.Error data -> Remote data
-remoteFromResult result =
-    case result of
-        Err error ->
-            Failure error
-
-        Ok data ->
-            Success data
 
 
 type Msg
@@ -108,8 +72,8 @@ questionDecoder status =
 
 init : () -> ( Model, Cmd Msg )
 init () =
-    ( { quiz = Loading }
-    , remoteGet "https://20q.glitch.me/latest_quiz"
+    ( { quiz = Remote.Loading }
+    , Remote.get "https://20q.glitch.me/latest_quiz"
         HandleGetQuiz
         (quizDecoder AnswerHidden)
     )
@@ -124,7 +88,7 @@ update msg model =
         SetQuestionStatus index status ->
             ( { model
                 | quiz =
-                    remoteMap (setQuestionStatus index status)
+                    Remote.map (setQuestionStatus index status)
                         model.quiz
               }
             , Cmd.none
@@ -153,13 +117,13 @@ view model =
     { title = "20 שאלות"
     , body =
         case model.quiz of
-            Loading ->
+            Remote.Loading ->
                 [ text "loading" ]
 
-            Success quiz ->
+            Remote.Success quiz ->
                 quizBody quiz
 
-            Failure err ->
+            Remote.Failure err ->
                 [ text "failure!", text <| Debug.toString err ]
     }
 
