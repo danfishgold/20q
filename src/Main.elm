@@ -2,9 +2,12 @@ module Main exposing (main)
 
 import Array exposing (Array)
 import Browser exposing (document)
-import Html exposing (Html, button, div, h1, img, span, text)
-import Html.Attributes exposing (src, style)
-import Html.Events exposing (onClick)
+import Css exposing (..)
+import Css.Global exposing (..)
+import Css.Media as Media exposing (only, screen, withMedia)
+import Html.Styled exposing (Html, button, div, h1, img, p, span, text)
+import Html.Styled.Attributes exposing (css, src, style)
+import Html.Styled.Events exposing (onClick)
 import Http
 import Json.Decode as Json
 import Remote exposing (Remote)
@@ -80,7 +83,7 @@ init () =
 
 
 fakeQuiz =
-    { image = Nothing
+    { image = Just "https://images.haarets.co.il/image/upload/w_500,h_290,x_0,y_17,c_crop,g_north_west/w_640,h_370,q_auto,c_fill,f_auto/fl_lossy.any_format.preserve_transparency.progressive:none/v1546520298/1.6806950.4030303706.gif"
     , questions =
         Array.fromList
             [ { answer = "גַּלְגֶּשֶׁת"
@@ -209,74 +212,190 @@ setQuestionStatus index newStatus quiz =
             { quiz | questions = newQuestions }
 
 
+transitionWidth =
+    px 700
+
+
 view : Model -> Browser.Document Msg
 view model =
     { title = "20 שאלות"
     , body =
-        case model.quiz of
-            Remote.Loading ->
-                [ text "loading" ]
-
-            Remote.Success quiz ->
-                quizBody quiz
-
-            Remote.Failure err ->
-                [ text "failure!", text <| Debug.toString err ]
+        [ global
+            [ everything
+                [ fontFamilies [ "Helvetica", "Arial" ]
+                ]
+            ]
+        , Html.Styled.node "main"
+            [ css
+                [ textAlign right
+                , property "direction" "rtl"
+                , width <| pct 95
+                , maxWidth <| transitionWidth
+                , marginLeft <| auto
+                , marginRight <| auto
+                ]
+            ]
+            (body model)
+        ]
+            |> List.map Html.Styled.toUnstyled
     }
+
+
+body : Model -> List (Html Msg)
+body model =
+    case model.quiz of
+        Remote.Loading ->
+            [ h1 [] [ text "20 שאלות, והכותרת היא:" ], text "רק רגע אחד..." ]
+
+        Remote.Failure err ->
+            [ h1 [] [ text "20 שאלות והכותרת היא: שיט, רגע יש שגיאה" ]
+            , p [] [ text <| httpErrorMessage err ]
+            ]
+
+        Remote.Success quiz ->
+            quizBody quiz
+
+
+httpErrorMessage : Http.Error -> String
+httpErrorMessage err =
+    case err of
+        Http.NetworkError ->
+            "השרת לא מגיב"
+
+        Http.BadUrl url ->
+            "יש בעיה בכתובת הזאת: " ++ url
+
+        Http.BadStatus code ->
+            "השרת החזיר את הקוד " ++ String.fromInt code ++ ", מה שזה לא אומר"
+
+        Http.Timeout ->
+            "לקח לשרת יותר מדי זמן להגיב"
+
+        Http.BadBody body_ ->
+            "השרת שלח לי משהו שאני לא יודע איך להתמודד איתו"
 
 
 quizBody : Quiz -> List (Html Msg)
 quizBody quiz =
-    [ div [ style "direction" "rtl" ]
-        [ h1 [] [ text quiz.title ]
-        , case quiz.image of
-            Just image ->
-                img [ src image ] []
+    [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ quiz.title ]
+    , case quiz.image of
+        Just image ->
+            img
+                [ src image
+                , css
+                    [ withMedia [ only screen [ Media.maxWidth transitionWidth ] ]
+                        [ Css.width <| vw 100
+                        , position relative
+                        , left <| pct 50
+                        , right <| pct 50
+                        , marginLeft <| vw -50
+                        , marginRight <| vw -50
+                        ]
+                    , withMedia [ only screen [ Media.minWidth transitionWidth ] ]
+                        [ width <| pct 100
+                        ]
+                    ]
+                ]
+                []
 
-            Nothing ->
-                text ""
-        , div []
-            (Array.toList quiz.questions
-                |> List.indexedMap questionView
-                |> List.map (div [])
-            )
+        Nothing ->
+            text ""
+    , div
+        [ css
+            [ fontSize <| rem 1.2
+            , property "display" "grid"
+
+            --, property "grid-row-gap" "10px"
+            ]
         ]
+        (Array.toList quiz.questions
+            |> List.indexedMap questionView
+        )
     ]
 
 
-questionView : Int -> Question -> List (Html Msg)
+questionView : Int -> Question -> Html Msg
 questionView index { question, answer, status } =
+    let
+        col start end =
+            css
+                [ property
+                    "grid-column"
+                    (String.fromInt start ++ " / " ++ String.fromInt end)
+                , property "align-self" "start"
+                ]
+
+        row attrs children =
+            div
+                (css
+                    [ property "display" "grid"
+                    , property "grid-template-columns" "2em 1fr 4em"
+                    , paddingTop <| px 10
+                    , paddingBottom <| px 10
+                    ]
+                    :: attrs
+                )
+                children
+
+        questionNumberSpan =
+            span [ col 1 2 ] [ text <| String.fromInt (index + 1) ++ "." ]
+
+        questionSpan =
+            span [ col 2 3 ] [ text question ]
+
+        showAnswerButton =
+            button
+                [ col 3 4
+                , onClick (SetQuestionStatus index AnswerShown)
+                ]
+                [ text "תשובה" ]
+
+        answerSpan =
+            span [ col 2 3, style "background" "#eee", css [ padding <| px 10 ] ] [ text answer ]
+
+        answerOptionsRow =
+            [ Correct, Half, Incorrect ]
+                |> List.map (setScoreButton (Answered >> SetQuestionStatus index))
+                |> div [ col 2 3 ]
+    in
     case status of
         AnswerHidden ->
-            [ text <| String.fromInt (index + 1) ++ ". " ++ question
-            , button
-                [ onClick (SetQuestionStatus index AnswerShown) ]
-                [ text "הצג תשובה" ]
-            ]
+            row [] [ questionNumberSpan, questionSpan, showAnswerButton ]
 
         AnswerShown ->
-            [ text <| String.fromInt (index + 1) ++ ". " ++ question
-            , text answer
-            , div []
-                [ button
-                    [ onClick (SetQuestionStatus index (Answered Correct)) ]
-                    [ text "נכון" ]
-                , button
-                    [ onClick (SetQuestionStatus index (Answered Incorrect)) ]
-                    [ text "לא נכון" ]
-                , button
-                    [ onClick (SetQuestionStatus index (Answered Half)) ]
-                    [ text "חצי נקודה" ]
+            row []
+                [ questionNumberSpan
+                , questionSpan
+                , answerSpan
+                , answerOptionsRow
                 ]
-            ]
 
         Answered score ->
-            [ span
-                [ style "background" (backgroundColor score) ]
-                [ text <| String.fromInt (index + 1) ++ ". " ++ question ]
-            ]
+            row [ style "background" (backgroundColor score) ]
+                [ questionNumberSpan, questionSpan ]
 
 
+setScoreButton : (Score -> msg) -> Score -> Html msg
+setScoreButton toMsg score =
+    button
+        [ onClick <| toMsg score ]
+        [ text <| setScoreButtonText score ]
+
+
+setScoreButtonText : Score -> String
+setScoreButtonText score =
+    case score of
+        Correct ->
+            "נכון"
+
+        Incorrect ->
+            "לא נכון"
+
+        Half ->
+            "חצי נקודה"
+
+
+backgroundColor : Score -> String
 backgroundColor score =
     case score of
         Correct ->
