@@ -61,13 +61,24 @@ main =
         }
 
 
-finalScore : Quiz -> Maybe Float
+finalScore : Quiz -> Maybe ( Float, Int )
 finalScore quiz =
-    quiz.questions
-        |> Array.toList
-        |> List.map (.status >> statusToScoreValue)
-        |> flatten
-        |> Maybe.map List.sum
+    let
+        maybeValues =
+            quiz.questions
+                |> Array.toList
+                |> List.map (.status >> statusToScoreValue)
+                |> flatten
+    in
+    case maybeValues of
+        Nothing ->
+            Nothing
+
+        Just values ->
+            Just
+                ( List.sum values
+                , List.length <| List.filter ((==) 0.5) values
+                )
 
 
 flatten : List (Maybe a) -> Maybe (List a)
@@ -383,12 +394,20 @@ quizBody quiz =
         Nothing ->
             text ""
 
-        Just score ->
+        Just ( score, halfCount ) ->
             h2 []
                 [ text <|
-                    "התוצאה הסופית: "
-                        ++ String.fromFloat score
-                        ++ " תשובות נכונות."
+                    if halfCount > 0 then
+                        "התוצאה הסופית: "
+                            ++ String.fromFloat score
+                            ++ " תשובות נכונות, כולל "
+                            ++ String.fromInt halfCount
+                            ++ " חצאי נקודה."
+
+                    else
+                        "התוצאה הסופית: "
+                            ++ String.fromFloat score
+                            ++ " תשובות נכונות."
                 ]
     ]
 
