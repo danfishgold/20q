@@ -5,7 +5,7 @@ import Browser exposing (document)
 import Css exposing (..)
 import Css.Global exposing (..)
 import Css.Media as Media exposing (only, screen, withMedia)
-import Html.Styled exposing (Html, button, div, h1, h2, img, p, span, text)
+import Html.Styled exposing (Html, div, h1, h2, img, p, span, text)
 import Html.Styled.Attributes exposing (css, src, style)
 import Html.Styled.Events exposing (onClick)
 import Http
@@ -242,7 +242,7 @@ fakeQuiz =
 
 
 fake () =
-    ( { quiz = Remote.Success fakeQuiz }, Cmd.none )
+    ( { quiz = Remote.Success fakeQuiz, showErrors = False }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -283,6 +283,23 @@ setQuestionStatus index newStatus quiz =
 
 transitionWidth =
     px 700
+
+
+button isActive =
+    Html.Styled.styled Html.Styled.button
+        [ padding <| px 10
+        , borderRadius <| px 3
+        , textDecoration none
+        , border <| px 0
+        , if isActive then
+            Css.backgroundColor <| hex "4590E6"
+
+          else
+            Css.backgroundColor <| hex "B3D7FF"
+        , color <| hex "FFFFFF"
+        , fontSize <| rem 1.2
+        , property "-webkit-appearence" "none"
+        ]
 
 
 view : Model -> Browser.Document Msg
@@ -353,7 +370,7 @@ httpErrorBody showErrors err =
             else
                 wrapper
                     [ p [] [ text <| "השרת שלח לי משהו שאני לא יודע איך להתמודד איתו" ]
-                    , button [ onClick ShowErrors ] [ text "זה בסדר, אני דן" ]
+                    , button True [ onClick ShowErrors ] [ text "זה בסדר, אני דן" ]
                     ]
 
 
@@ -427,7 +444,8 @@ questionView index { question, answer, status } =
             div
                 (css
                     [ property "display" "grid"
-                    , property "grid-template-columns" "2em 1fr 4em"
+                    , property "grid-template-columns" "1.5rem 1fr 7rem"
+                    , property "grid-column-gap" "1rem"
                     , paddingTop <| px 10
                     , paddingBottom <| px 10
                     ]
@@ -441,8 +459,8 @@ questionView index { question, answer, status } =
         questionSpan =
             span [ col 2 3 ] [ text question ]
 
-        showAnswerButton =
-            button
+        showAnswerButton isActive =
+            button isActive
                 [ col 3 4
                 , onClick (SetQuestionStatus index AnswerShown)
                 ]
@@ -454,16 +472,24 @@ questionView index { question, answer, status } =
         answerOptionsRow =
             [ Correct, Half, Incorrect ]
                 |> List.map (setScoreButton (Answered >> SetQuestionStatus index))
-                |> div [ col 2 3, css [ paddingTop <| px 15, textAlign center ] ]
+                |> div
+                    [ col 2 3
+                    , css
+                        [ paddingTop <| px 15
+                        , textAlign center
+                        , property "direction" "ltr"
+                        ]
+                    ]
     in
     case status of
         AnswerHidden ->
-            row [] [ questionNumberSpan, questionSpan, showAnswerButton ]
+            row [] [ questionNumberSpan, questionSpan, showAnswerButton True ]
 
         AnswerShown ->
             row []
                 [ questionNumberSpan
                 , questionSpan
+                , showAnswerButton False
                 , answerSpan
                 , answerOptionsRow
                 ]
