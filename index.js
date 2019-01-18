@@ -1,7 +1,10 @@
 const express = require("express");
 const cheerio = require("cheerio");
 const request = require("request-promise-native");
+const cors = require("cors");
+
 const app = express();
+app.use(cors());
 
 app.use(express.static("public"));
 
