@@ -435,7 +435,7 @@ questionView index { question, answer, status } =
         answerOptionsRow =
             [ Correct, Half, Incorrect ]
                 |> List.map (setScoreButton (Answered >> SetQuestionStatus index))
-                |> div [ col 2 3 ]
+                |> div [ col 2 3, css [ paddingTop <| px 15, textAlign center ] ]
     in
     case status of
         AnswerHidden ->
@@ -456,35 +456,43 @@ questionView index { question, answer, status } =
 
 setScoreButton : (Score -> msg) -> Score -> Html msg
 setScoreButton toMsg score =
-    button
-        [ onClick <| toMsg score ]
-        [ text <| setScoreButtonText score ]
+    img
+        [ onClick <| toMsg score
+        , src <| setScoreButtonSource score
+        , css
+            [ width <| px 40
+            , height <| px 40
+            , paddingLeft <| px 10
+            , paddingRight <| px 10
+            ]
+        ]
+        []
 
 
-setScoreButtonText : Score -> String
-setScoreButtonText score =
+setScoreButtonSource : Score -> String
+setScoreButtonSource score =
     case score of
         Correct ->
-            "נכון"
+            "img/v.svg"
 
         Incorrect ->
-            "לא נכון"
+            "img/x.svg"
 
         Half ->
-            "חצי נקודה"
+            "img/half.svg"
 
 
 backgroundColor : Score -> String
 backgroundColor score =
     case score of
         Correct ->
-            "lightgreen"
+            "#B8E68A"
 
         Incorrect ->
-            "pink"
+            "#FF9999"
 
         Half ->
-            "yellow"
+            "#FFD966"
 
 
 subscriptions : Model -> Sub Msg
