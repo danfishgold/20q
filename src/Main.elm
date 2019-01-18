@@ -14,7 +14,9 @@ import Remote exposing (Remote)
 
 
 type alias Model =
-    { quiz : Remote Quiz }
+    { quiz : Remote Quiz
+    , showErrors : Bool
+    }
 
 
 type alias Quiz =
@@ -46,6 +48,7 @@ type Score
 type Msg
     = HandleGetQuiz (Remote Quiz)
     | SetQuestionStatus Int QuestionStatus
+    | ShowErrors
 
 
 main : Program () Model Msg
@@ -125,7 +128,9 @@ questionDecoder status =
 
 init : () -> ( Model, Cmd Msg )
 init () =
-    ( { quiz = Remote.Loading }
+    ( { quiz = Remote.Loading
+      , showErrors = False
+      }
     , Remote.get "https://20q.glitch.me/latest_quiz"
         HandleGetQuiz
         (quizDecoder AnswerHidden)
@@ -244,6 +249,9 @@ update msg model =
             , Cmd.none
             )
 
+        ShowErrors ->
+            ( { model | showErrors = True }, Cmd.none )
+
 
 setQuestionStatus : Int -> QuestionStatus -> Quiz -> Quiz
 setQuestionStatus index newStatus quiz =
@@ -299,31 +307,43 @@ body model =
             [ h1 [] [ text "20 שאלות, והכותרת היא:" ], text "רק רגע אחד..." ]
 
         Remote.Failure err ->
-            [ h1 [] [ text "20 שאלות והכותרת היא: שיט, רגע יש שגיאה" ]
-            , p [] [ text <| httpErrorMessage err ]
-            ]
+            httpErrorBody model.showErrors err
 
         Remote.Success quiz ->
             quizBody quiz
 
 
-httpErrorMessage : Http.Error -> String
-httpErrorMessage err =
+httpErrorBody : Bool -> Http.Error -> List (Html Msg)
+httpErrorBody showErrors err =
+    let
+        wrapper elements =
+            h1 [] [ text "20 שאלות והכותרת היא: שיט, רגע יש שגיאה" ] :: elements
+    in
     case err of
         Http.NetworkError ->
-            "השרת לא מגיב"
+            wrapper [ p [] [ text "השרת לא מגיב" ] ]
 
         Http.BadUrl url ->
-            "יש בעיה בכתובת הזאת: " ++ url
+            wrapper [ p [] [ text <| "יש בעיה בכתובת הזאת: " ++ url ] ]
 
         Http.BadStatus code ->
-            "השרת החזיר את הקוד " ++ String.fromInt code ++ ", מה שזה לא אומר"
+            wrapper [ p [] [ text <| "השרת החזיר את הקוד " ++ String.fromInt code ++ ", מה שזה לא אומר" ] ]
 
         Http.Timeout ->
-            "לקח לשרת יותר מדי זמן להגיב"
+            wrapper [ p [] [ text <| "לקח לשרת יותר מדי זמן להגיב" ] ]
 
         Http.BadBody body_ ->
-            "השרת שלח לי משהו שאני לא יודע איך להתמודד איתו"
+            if showErrors then
+                wrapper
+                    [ p [] [ text <| "השרת לא יודע איך להתמודד עם זה:" ]
+                    , p [] [ text body_ ]
+                    ]
+
+            else
+                wrapper
+                    [ p [] [ text <| "השרת שלח לי משהו שאני לא יודע איך להתמודד איתו" ]
+                    , button [ onClick ShowErrors ] [ text "זה בסדר, אני דן" ]
+                    ]
 
 
 quizBody : Quiz -> List (Html Msg)
