@@ -9,6 +9,7 @@ import Html.Styled exposing (Html, div, h1, h2, img, p, span, text)
 import Html.Styled.Attributes exposing (css, src, style)
 import Html.Styled.Events exposing (onClick)
 import Http
+import Icons
 import Json.Decode as Json
 import Remote exposing (Remote)
 
@@ -501,9 +502,8 @@ questionView index { question, answer, status } =
 
 setScoreButton : (Score -> msg) -> Score -> Html msg
 setScoreButton toMsg score =
-    img
+    setScoreSvg score
         [ onClick <| toMsg score
-        , src <| setScoreButtonSource score
         , css
             [ width <| px 40
             , height <| px 40
@@ -511,20 +511,22 @@ setScoreButton toMsg score =
             , paddingRight <| px 10
             ]
         ]
-        []
 
 
-setScoreButtonSource : Score -> String
-setScoreButtonSource score =
+setScoreSvg :
+    Score
+    -> List (Html.Styled.Attribute msg)
+    -> Html.Styled.Html msg
+setScoreSvg score =
     case score of
         Correct ->
-            "img/v.svg"
+            Icons.v
 
         Incorrect ->
-            "img/x.svg"
+            Icons.x
 
         Half ->
-            "img/half.svg"
+            Icons.half
 
 
 backgroundColor : Score -> String
