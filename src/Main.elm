@@ -468,11 +468,13 @@ questionView index { question, answer, status } =
                 [ text "תשובה" ]
 
         answerSpan =
-            span [ col 2 3, style "background" "#eee", css [ padding <| px 10 ] ] [ text answer ]
+            span
+                [ col 2 3, style "background" "#eee", css [ padding <| px 10 ] ]
+                [ text answer ]
 
         answerOptionsRow =
             [ Correct, Half, Incorrect ]
-                |> List.map (setScoreButton (Answered >> SetQuestionStatus index))
+                |> List.map (setScoreSvg (Answered >> SetQuestionStatus index))
                 |> div
                     [ col 2 3
                     , css
@@ -500,33 +502,17 @@ questionView index { question, answer, status } =
                 [ questionNumberSpan, questionSpan ]
 
 
-setScoreButton : (Score -> msg) -> Score -> Html msg
-setScoreButton toMsg score =
-    setScoreSvg score
-        [ onClick <| toMsg score
-        , css
-            [ width <| px 40
-            , height <| px 40
-            , paddingLeft <| px 10
-            , paddingRight <| px 10
-            ]
-        ]
-
-
-setScoreSvg :
-    Score
-    -> List (Html.Styled.Attribute msg)
-    -> Html.Styled.Html msg
-setScoreSvg score =
+setScoreSvg : (Score -> msg) -> Score -> Html.Styled.Html msg
+setScoreSvg toMsg score =
     case score of
         Correct ->
-            Icons.v
+            Icons.v (toMsg score)
 
         Incorrect ->
-            Icons.x
+            Icons.x (toMsg score)
 
         Half ->
-            Icons.half
+            Icons.half (toMsg score)
 
 
 backgroundColor : Score -> String
