@@ -1,7 +1,8 @@
 module Main exposing (main)
 
 import Array exposing (Array)
-import Browser exposing (document)
+import Browser exposing (application)
+import Browser.Navigation as Nav
 import Css exposing (..)
 import Css.Global exposing (..)
 import Css.Media as Media exposing (only, screen, withMedia)
@@ -12,19 +13,63 @@ import Http
 import Icons
 import Json.Decode as Json
 import Remote exposing (Remote)
+import Time exposing (Posix)
+import Url exposing (Url)
 
 
 type alias Model =
     { quiz : Remote Quiz
     , showErrors : Bool
+    , key : Nav.Key
+    }
+
+
+type State
+    = LoadingQuizListPage
+    | QuizListPageError Http.Error
+    | QuizListPage (List (QuizMetadata {}))
+    | LoadingQuizPageWithId String
+    | LoadingQuizPageWithMetadata (QuizMetadata {})
+    | QuizPageError String Http.Error
+    | QuizPage Quiz
+
+
+stateToUrl : State -> String
+stateToUrl state =
+    case state of
+        LoadingQuizListPage ->
+            ""
+
+        QuizListPageError _ ->
+            ""
+
+        QuizListPage _ ->
+            ""
+
+        LoadingQuizPageWithId id ->
+            "" ++ id
+
+        LoadingQuizPageWithMetadata { id } ->
+            "" ++ id
+
+        QuizPageError id _ ->
+            "" ++ id
+
+        QuizPage { id } ->
+            "" ++ id
+
+
+type alias QuizMetadata a =
+    { a
+        | title : String
+        , id : String
+        , image : String
+        , posix : Posix
     }
 
 
 type alias Quiz =
-    { title : String
-    , image : Maybe String
-    , questions : Array Question
-    }
+    QuizMetadata { questions : Array Question }
 
 
 type alias Question =
@@ -50,14 +95,18 @@ type Msg
     = HandleGetQuiz (Remote Quiz)
     | SetQuestionStatus Int QuestionStatus
     | ShowErrors
+    | UrlRequested Browser.UrlRequest
+    | UrlChanged Url
 
 
 main : Program () Model Msg
 main =
-    document
+    application
         { init = init
         , update = update
         , view = view
+        , onUrlRequest = UrlRequested
+        , onUrlChange = UrlChanged
         , subscriptions = subscriptions
         }
 
@@ -123,12 +172,40 @@ scoreToFloat score =
             0.5
 
 
+quizMetadataDecoder : Json.Decoder (QuizMetadata {})
+quizMetadataDecoder =
+    Json.map4
+        (\title image posix id ->
+            { title = title
+            , image = image
+            , posix = posix
+            , id = id
+            }
+        )
+        (Json.field "title" Json.string)
+        (Json.field "image" Json.string)
+        (Json.field "posix" <| Json.map Time.millisToPosix <| Json.int)
+        (Json.field "id" Json.string)
+
+
+quizQuestionsDecoder : QuestionStatus -> Json.Decoder (Array Question)
+quizQuestionsDecoder questionStatus =
+    Json.field "questions" <| Json.array <| questionDecoder questionStatus
+
+
 quizDecoder : QuestionStatus -> Json.Decoder Quiz
 quizDecoder questionStatus =
-    Json.map3 Quiz
-        (Json.field "title" Json.string)
-        (Json.field "image" Json.string |> Json.maybe)
-        (Json.field "questions" <| Json.array <| questionDecoder questionStatus)
+    Json.map2
+        (\{ id, title, image, posix } questions ->
+            { title = title
+            , image = image
+            , posix = posix
+            , id = id
+            , questions = questions
+            }
+        )
+        quizMetadataDecoder
+        (quizQuestionsDecoder questionStatus)
 
 
 questionDecoder : QuestionStatus -> Json.Decoder Question
@@ -138,12 +215,38 @@ questionDecoder status =
         (Json.field "answer" Json.string)
 
 
-init : () -> ( Model, Cmd Msg )
-init () =
-    ( { quiz = Remote.Loading
+init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init () url key =
+    case url.fragment of
+        Nothing ->
+            quizListInit key
+
+        Just "" ->
+            quizListInit key
+
+        Just quizId ->
+            quizInit quizId key
+
+
+quizInit : String -> Nav.Key -> ( Model, Cmd Msg )
+quizInit quizId key =
+    ( { quiz = Remote.Loading --state = LoadingQuizPageWithId quizId
       , showErrors = False
+      , key = key
       }
-    , Remote.get "https://20q.glitch.me/latest_quiz"
+    , Remote.get "http://localhost:5000/quizes/latest"
+        HandleGetQuiz
+        (quizDecoder AnswerHidden)
+    )
+
+
+quizListInit : Nav.Key -> ( Model, Cmd Msg )
+quizListInit key =
+    ( { quiz = Remote.Loading --state = LoadingQuizListPage
+      , showErrors = False
+      , key = key
+      }
+    , Remote.get "http://20q.glitch.me/quizes/latest"
         HandleGetQuiz
         (quizDecoder AnswerHidden)
     )
@@ -166,6 +269,17 @@ update msg model =
 
         ShowErrors ->
             ( { model | showErrors = True }, Cmd.none )
+
+        UrlRequested urlRequest ->
+            case urlRequest of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.key (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
+
+        UrlChanged url ->
+            ( model, Cmd.none )
 
 
 setQuestionStatus : Int -> QuestionStatus -> Quiz -> Quiz
@@ -281,28 +395,23 @@ httpErrorBody showErrors err =
 quizBody : Quiz -> List (Html Msg)
 quizBody quiz =
     [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ quiz.title ]
-    , case quiz.image of
-        Just image ->
-            img
-                [ src image
-                , css
-                    [ withMedia [ only screen [ Media.maxWidth transitionWidth ] ]
-                        [ Css.width <| vw 100
-                        , position relative
-                        , left <| pct 50
-                        , right <| pct 50
-                        , marginLeft <| vw -50
-                        , marginRight <| vw -50
-                        ]
-                    , withMedia [ only screen [ Media.minWidth transitionWidth ] ]
-                        [ width <| pct 100
-                        ]
-                    ]
+    , img
+        [ src quiz.image
+        , css
+            [ withMedia [ only screen [ Media.maxWidth transitionWidth ] ]
+                [ Css.width <| vw 100
+                , position relative
+                , left <| pct 50
+                , right <| pct 50
+                , marginLeft <| vw -50
+                , marginRight <| vw -50
                 ]
-                []
-
-        Nothing ->
-            text ""
+            , withMedia [ only screen [ Media.minWidth transitionWidth ] ]
+                [ width <| pct 100
+                ]
+            ]
+        ]
+        []
     , div
         [ css
             [ property "display" "grid"
