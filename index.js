@@ -26,7 +26,7 @@ async function fetch_recent_quizes() {
         id: quiz.id,
         // sometimes the size of the image is 1x1, so I remove the constraint
         // from the url ("w_1,h_1")
-        image: quiz.image.path.replace(/w_\d+,h_\d+,/, ""),
+        image: quiz.image.path.replace(/w_\d+,h_\d+,/g, ""),
         posix: moment(quiz.publishDate, "DD.MM.YYYY").unix(),
         title: quiz.title
       };
