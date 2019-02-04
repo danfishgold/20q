@@ -481,7 +481,7 @@ questionView index { question, answer, status } =
 
         answerSpan =
             span
-                [ col 2 3, style "background" "#eee", css [ padding <| px 10 ] ]
+                [ col 2 3, style "background" "rgba(0, 0, 0, 0.1)", css [ padding <| px 10 ] ]
                 [ text answer ]
 
         answerOptionsRow =
@@ -511,7 +511,7 @@ questionView index { question, answer, status } =
 
         Answered score ->
             row [ style "background" (backgroundColor score) ]
-                [ questionNumberSpan, questionSpan ]
+                [ questionNumberSpan, questionSpan, answerSpan ]
 
 
 setScoreSvg : (Score -> msg) -> Score -> Html.Styled.Html msg
