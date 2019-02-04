@@ -7,21 +7,33 @@ import Css exposing (..)
 import Css.Global exposing (..)
 import Css.Media as Media exposing (only, screen, withMedia)
 import Html.Styled exposing (Html, div, h1, h2, img, p, span, text)
-import Html.Styled.Attributes exposing (css, src, style)
+import Html.Styled.Attributes exposing (css, href, src, style)
 import Html.Styled.Events exposing (onClick)
 import Http
 import Icons
 import Json.Decode as Json
-import Remote exposing (Remote)
 import Time exposing (Posix)
 import Url exposing (Url)
 
 
+get : String -> (Result Http.Error a -> msg) -> Json.Decoder a -> Cmd msg
+get url toMsg decoder =
+    Http.get
+        { url = url
+        , expect = Http.expectJson toMsg decoder
+        }
+
+
 type alias Model =
-    { quiz : Remote Quiz
+    { state : State
     , showErrors : Bool
     , key : Nav.Key
     }
+
+
+type Page
+    = QuizList
+    | AQuiz String
 
 
 type State
@@ -34,29 +46,70 @@ type State
     | QuizPage Quiz
 
 
-stateToUrl : State -> String
-stateToUrl state =
+stateToPage : State -> Page
+stateToPage state =
     case state of
         LoadingQuizListPage ->
-            ""
+            QuizList
 
         QuizListPageError _ ->
-            ""
+            QuizList
 
         QuizListPage _ ->
-            ""
+            QuizList
 
         LoadingQuizPageWithId id ->
-            "" ++ id
+            AQuiz id
 
         LoadingQuizPageWithMetadata { id } ->
-            "" ++ id
+            AQuiz id
 
         QuizPageError id _ ->
-            "" ++ id
+            AQuiz id
 
         QuizPage { id } ->
-            "" ++ id
+            AQuiz id
+
+
+urlToPage : Url -> Page
+urlToPage url =
+    case url.fragment of
+        Nothing ->
+            QuizList
+
+        Just "" ->
+            QuizList
+
+        Just quizId ->
+            AQuiz quizId
+
+
+pageToUrl : Page -> String
+pageToUrl page =
+    case page of
+        QuizList ->
+            "/"
+
+        AQuiz quizId ->
+            "/#" ++ quizId
+
+
+pageToStateAndCommand : Page -> ( State, Cmd Msg )
+pageToStateAndCommand page =
+    case page of
+        QuizList ->
+            ( LoadingQuizListPage
+            , get "/quizes/recent"
+                HandleGetQuizList
+                (Json.list quizMetadataDecoder)
+            )
+
+        AQuiz quizId ->
+            ( LoadingQuizPageWithId quizId
+            , get ("/quizes/" ++ quizId)
+                HandleGetQuiz
+                (quizDecoder AnswerHidden)
+            )
 
 
 type alias QuizMetadata a =
@@ -92,11 +145,13 @@ type Score
 
 
 type Msg
-    = HandleGetQuiz (Remote Quiz)
+    = HandleGetQuizList (Result Http.Error (List (QuizMetadata {})))
+    | HandleGetQuiz (Result Http.Error Quiz)
     | SetQuestionStatus Int QuestionStatus
     | ShowErrors
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url
+    | RequestQuiz String
 
 
 main : Program () Model Msg
@@ -217,55 +272,80 @@ questionDecoder status =
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url key =
-    case url.fragment of
-        Nothing ->
-            quizListInit key
-
-        Just "" ->
-            quizListInit key
-
-        Just quizId ->
-            quizInit quizId key
-
-
-quizInit : String -> Nav.Key -> ( Model, Cmd Msg )
-quizInit quizId key =
-    ( { quiz = Remote.Loading --state = LoadingQuizPageWithId quizId
+    let
+        ( state, cmd ) =
+            pageToStateAndCommand (urlToPage url)
+    in
+    ( { key = key
+      , state = state
       , showErrors = False
-      , key = key
       }
-    , Remote.get "http://localhost:5000/quizes/latest"
-        HandleGetQuiz
-        (quizDecoder AnswerHidden)
+    , cmd
     )
 
 
-quizListInit : Nav.Key -> ( Model, Cmd Msg )
-quizListInit key =
-    ( { quiz = Remote.Loading --state = LoadingQuizListPage
-      , showErrors = False
-      , key = key
-      }
-    , Remote.get "http://20q.glitch.me/quizes/latest"
-        HandleGetQuiz
-        (quizDecoder AnswerHidden)
-    )
+loadingQuizId : State -> Maybe String
+loadingQuizId state =
+    case state of
+        LoadingQuizPageWithId id ->
+            Just id
+
+        LoadingQuizPageWithMetadata { id } ->
+            Just id
+
+        _ ->
+            Nothing
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        HandleGetQuiz quiz ->
-            ( { model | quiz = quiz }, Cmd.none )
+        HandleGetQuiz result ->
+            let
+                newState =
+                    case ( loadingQuizId model.state, result ) of
+                        ( Just id, Ok quiz ) ->
+                            if quiz.id == id then
+                                QuizPage quiz
+
+                            else
+                                model.state
+
+                        ( Just id, Err error ) ->
+                            QuizPageError id error
+
+                        ( Nothing, _ ) ->
+                            model.state
+            in
+            ( { model | state = newState }, Cmd.none )
+
+        HandleGetQuizList result ->
+            let
+                newState =
+                    if model.state == LoadingQuizListPage then
+                        case result of
+                            Ok quizes ->
+                                QuizListPage quizes
+
+                            Err error ->
+                                QuizListPageError error
+
+                    else
+                        model.state
+            in
+            ( { model | state = newState }, Cmd.none )
 
         SetQuestionStatus index status ->
-            ( { model
-                | quiz =
-                    Remote.map (setQuestionStatus index status)
-                        model.quiz
-              }
-            , Cmd.none
-            )
+            case model.state of
+                QuizPage quiz ->
+                    ( { model
+                        | state = QuizPage (setQuestionStatus index status quiz)
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
         ShowErrors ->
             ( { model | showErrors = True }, Cmd.none )
@@ -279,7 +359,18 @@ update msg model =
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            ( model, Cmd.none )
+            if stateToPage model.state /= urlToPage url then
+                let
+                    ( newState, cmd ) =
+                        pageToStateAndCommand (urlToPage url)
+                in
+                ( { model | state = newState }, cmd )
+
+            else
+                ( model, Cmd.none )
+
+        RequestQuiz quizId ->
+            ( model, Nav.pushUrl model.key (pageToUrl (AQuiz quizId)) )
 
 
 setQuestionStatus : Int -> QuestionStatus -> Quiz -> Quiz
@@ -348,48 +439,82 @@ view model =
 
 body : Model -> List (Html Msg)
 body model =
-    case model.quiz of
-        Remote.Loading ->
-            [ h1 [] [ text "20 שאלות, והכותרת היא:" ], text "רק רגע אחד..." ]
+    case model.state of
+        LoadingQuizListPage ->
+            [ h1 [] [ text "20 שאלות" ]
+            , text "רק רגע אחד..."
+            ]
 
-        Remote.Failure err ->
-            httpErrorBody model.showErrors err
+        QuizListPageError err ->
+            h1 [] [ text "שיט, רגע יש שגיאה" ]
+                :: httpErrorBody model.showErrors err
 
-        Remote.Success quiz ->
+        QuizListPage quizes ->
+            quizListBody quizes
+
+        LoadingQuizPageWithId _ ->
+            [ h1 [] [ text "20 שאלות, והכותרת היא:" ]
+            , text "רק רגע אחד..."
+            ]
+
+        LoadingQuizPageWithMetadata { title, image } ->
+            [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ title ]
+            , text "רק רגע אחד..."
+            ]
+
+        QuizPageError _ err ->
+            h1 [] [ text "20 שאלות והכותרת היא: שיט, רגע יש שגיאה" ]
+                :: httpErrorBody model.showErrors err
+
+        QuizPage quiz ->
             quizBody quiz
 
 
 httpErrorBody : Bool -> Http.Error -> List (Html Msg)
 httpErrorBody showErrors err =
-    let
-        wrapper elements =
-            h1 [] [ text "20 שאלות והכותרת היא: שיט, רגע יש שגיאה" ] :: elements
-    in
     case err of
         Http.NetworkError ->
-            wrapper [ p [] [ text "השרת לא מגיב" ] ]
+            [ p [] [ text "השרת לא מגיב" ] ]
 
         Http.BadUrl url ->
-            wrapper [ p [] [ text <| "יש בעיה בכתובת הזאת: " ++ url ] ]
+            [ p [] [ text <| "יש בעיה בכתובת הזאת: " ++ url ] ]
 
         Http.BadStatus code ->
-            wrapper [ p [] [ text <| "השרת החזיר את הקוד " ++ String.fromInt code ++ ", מה שזה לא אומר" ] ]
+            [ p []
+                [ text <|
+                    "השרת החזיר את הקוד "
+                        ++ String.fromInt code
+                        ++ ", מה שזה לא אומר"
+                ]
+            ]
 
         Http.Timeout ->
-            wrapper [ p [] [ text <| "לקח לשרת יותר מדי זמן להגיב" ] ]
+            [ p [] [ text <| "לקח לשרת יותר מדי זמן להגיב" ] ]
 
         Http.BadBody body_ ->
             if showErrors then
-                wrapper
-                    [ p [] [ text <| "השרת לא יודע איך להתמודד עם זה:" ]
-                    , p [] [ text body_ ]
-                    ]
+                [ p [] [ text <| "השרת לא יודע איך להתמודד עם זה:" ]
+                , p [] [ text body_ ]
+                ]
 
             else
-                wrapper
-                    [ p [] [ text <| "השרת שלח לי משהו שאני לא יודע איך להתמודד איתו" ]
-                    , button True [ onClick ShowErrors ] [ text "זה בסדר, אני דן" ]
+                [ p [] [ text "השרת שלח לי משהו שאני לא יודע איך להתמודד איתו" ]
+                , button True [ onClick ShowErrors ] [ text "זה בסדר, אני דן" ]
+                ]
+
+
+quizListBody : List (QuizMetadata {}) -> List (Html Msg)
+quizListBody quizes =
+    [ h1 [] [ text "20 שאלות" ]
+    , quizes
+        |> List.map
+            (\{ title, id } ->
+                div []
+                    [ Html.Styled.a [ href <| pageToUrl (AQuiz id) ] [ text title ]
                     ]
+            )
+        |> div []
+    ]
 
 
 quizBody : Quiz -> List (Html Msg)
@@ -481,7 +606,10 @@ questionView index { question, answer, status } =
 
         answerSpan =
             span
-                [ col 2 3, style "background" "rgba(0, 0, 0, 0.1)", css [ padding <| px 10 ] ]
+                [ col 2 3
+                , style "background" "rgba(0, 0, 0, 0.1)"
+                , css [ padding <| px 10 ]
+                ]
                 [ text answer ]
 
         answerOptionsRow =
