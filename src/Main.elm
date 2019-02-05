@@ -506,14 +506,44 @@ quizListBody : List (QuizMetadata {}) -> List (Html Msg)
 quizListBody quizes =
     [ h1 [] [ text "20 שאלות" ]
     , quizes
-        |> List.map
-            (\{ title, id } ->
-                div []
-                    [ Html.Styled.a [ href <| pageToUrl (AQuiz id) ] [ text title ]
-                    ]
-            )
+        |> List.map quizMetadataView
         |> div []
     ]
+
+
+quizMetadataView : QuizMetadata {} -> Html Msg
+quizMetadataView { title, id, image, date } =
+    div
+        [ css
+            [ boxShadow4 (px 0) (px 3) (px 5) (hex "999")
+            , marginTop <| px 30
+            , marginBottom <| px 30
+            ]
+        ]
+        [ Html.Styled.a
+            [ href <| pageToUrl (AQuiz id)
+            , css [ textDecoration none, color <| rgb 0 0 0 ]
+            ]
+            [ img
+                [ src image
+                , css
+                    [ width <| pct 100
+                    , padding <| px 0
+                    , margin <| px 0
+                    ]
+                ]
+                []
+            , div
+                [ css
+                    [ padding <| px 10
+                    , margin <| px 0
+                    ]
+                ]
+                [ h2 [ css [ padding <| px 0, marginBottom <| px 10, marginTop <| px 0 ] ] [ text title ]
+                , Html.Styled.node "date" [] [ text date ]
+                ]
+            ]
+        ]
 
 
 quizBody : Quiz -> List (Html Msg)
@@ -606,8 +636,10 @@ questionView index { question, answer, status } =
         answerSpan =
             span
                 [ col 2 3
-                , style "background" "rgba(0, 0, 0, 0.1)"
-                , css [ padding <| px 10 ]
+                , css
+                    [ padding <| px 10
+                    , Css.backgroundColor <| rgba 0 0 0 0.05
+                    ]
                 ]
                 [ text answer ]
 
