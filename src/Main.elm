@@ -31,6 +31,7 @@ scrollToTop =
 
 type alias Model =
     { state : State
+    , cachedQuizes : Maybe (List (QuizMetadata {}))
     , showErrors : Bool
     , key : Nav.Key
     }
@@ -99,19 +100,24 @@ pageToUrl page =
             "/#" ++ quizId
 
 
-pageToStateAndCommand : Page -> Maybe State -> ( State, Cmd Msg )
-pageToStateAndCommand page previousState =
+pageToStateAndCommand : Page -> Maybe (List (QuizMetadata {})) -> ( State, Cmd Msg )
+pageToStateAndCommand page cachedQuizes =
     case page of
         QuizList ->
-            ( LoadingQuizListPage
-            , get "/quizes/recent"
-                HandleGetQuizList
-                (Json.list quizMetadataDecoder)
-            )
+            case cachedQuizes of
+                Nothing ->
+                    ( LoadingQuizListPage
+                    , get "/quizes/recent"
+                        HandleGetQuizList
+                        (Json.list quizMetadataDecoder)
+                    )
+
+                Just quizes ->
+                    ( QuizListPage quizes, Cmd.none )
 
         AQuiz quizId ->
-            ( case previousState of
-                Just (QuizListPage quizes) ->
+            ( case cachedQuizes of
+                Just quizes ->
                     quizes
                         |> List.filter (\{ id } -> id == quizId)
                         |> List.head
@@ -294,6 +300,7 @@ init () url key =
     ( { key = key
       , state = state
       , showErrors = False
+      , cachedQuizes = Nothing
       }
     , cmd
     )
@@ -336,19 +343,19 @@ update msg model =
 
         HandleGetQuizList result ->
             let
-                newState =
+                ( newState, newCache ) =
                     if model.state == LoadingQuizListPage then
                         case result of
                             Ok quizes ->
-                                QuizListPage quizes
+                                ( QuizListPage quizes, Just quizes )
 
                             Err error ->
-                                QuizListPageError error
+                                ( QuizListPageError error, Nothing )
 
                     else
-                        model.state
+                        ( model.state, Nothing )
             in
-            ( { model | state = newState }, Cmd.none )
+            ( { model | state = newState, cachedQuizes = newCache }, Cmd.none )
 
         SetQuestionStatus index status ->
             case model.state of
@@ -377,12 +384,12 @@ update msg model =
             if stateToPage model.state /= urlToPage url then
                 let
                     ( newState, cmd ) =
-                        pageToStateAndCommand (urlToPage url) (Just model.state)
+                        pageToStateAndCommand (urlToPage url) model.cachedQuizes
                 in
-                ( { model | state = newState }, Cmd.batch [ cmd, scrollToTop ] )
+                ( { model | state = newState }, cmd )
 
             else
-                ( model, scrollToTop )
+                ( model, Cmd.none )
 
         RequestQuiz quizId ->
             ( model, Nav.pushUrl model.key (pageToUrl (AQuiz quizId)) )
