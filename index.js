@@ -27,7 +27,7 @@ async function fetch_recent_quizes() {
         // sometimes the size of the image is 1x1, so I remove the constraint
         // from the url ("w_1,h_1")
         image: quiz.image.path.replace(/w_\d+,h_\d+,/g, ""),
-        posix: moment(quiz.publishDate, "DD.MM.YYYY").unix(),
+        date: quiz.publishDate,
         title: quiz.title
       };
     })
@@ -113,13 +113,16 @@ async function fetch_and_cache_quiz_by_id(id) {
 
 async function fetch_and_cache_latest_quiz() {
   const recent = await fetch_and_cache_recent_quizes();
-  const latest = min_by(recent, quiz => -quiz.posix);
+  const latest = min_by(
+    recent,
+    quiz => -moment(quiz.date, "DD.MM.YYYY").unix()
+  );
   const quiz = await fetch_and_cache_quiz_by_id(latest.id);
   return quiz;
 }
 
 function quiz_has_metadata(quiz) {
-  return quiz.title && quiz.posix && quiz.image;
+  return quiz.title && quiz.date && quiz.image;
 }
 
 function quiz_has_questions(quiz) {

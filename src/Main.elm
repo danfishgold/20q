@@ -12,7 +12,6 @@ import Html.Styled.Events exposing (onClick)
 import Http
 import Icons
 import Json.Decode as Json
-import Time exposing (Posix)
 import Url exposing (Url)
 
 
@@ -117,7 +116,7 @@ type alias QuizMetadata a =
         | title : String
         , id : String
         , image : String
-        , posix : Posix
+        , date : String
     }
 
 
@@ -230,16 +229,16 @@ scoreToFloat score =
 quizMetadataDecoder : Json.Decoder (QuizMetadata {})
 quizMetadataDecoder =
     Json.map4
-        (\title image posix id ->
+        (\title image date id ->
             { title = title
             , image = image
-            , posix = posix
+            , date = date
             , id = id
             }
         )
         (Json.field "title" Json.string)
         (Json.field "image" Json.string)
-        (Json.field "posix" <| Json.map Time.millisToPosix <| Json.int)
+        (Json.field "date" Json.string)
         (Json.field "id" Json.string)
 
 
@@ -251,10 +250,10 @@ quizQuestionsDecoder questionStatus =
 quizDecoder : QuestionStatus -> Json.Decoder Quiz
 quizDecoder questionStatus =
     Json.map2
-        (\{ id, title, image, posix } questions ->
+        (\{ id, title, image, date } questions ->
             { title = title
             , image = image
-            , posix = posix
+            , date = date
             , id = id
             , questions = questions
             }
