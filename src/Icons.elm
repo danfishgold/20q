@@ -12,10 +12,10 @@ wrapper clickMsg element =
     span
         [ onClick clickMsg
         , css
-            [ Css.width <| px 40
-            , Css.height <| px 40
-            , paddingLeft <| px 10
-            , paddingRight <| px 10
+            [ Css.width <| px 35
+            , Css.height <| px 35
+            , paddingLeft <| px 5
+            , paddingRight <| px 5
             ]
         ]
         [ element ]
@@ -24,7 +24,7 @@ wrapper clickMsg element =
 half : msg -> Svg msg
 half clickMsg =
     wrapper clickMsg <|
-        svg [ height "40px", viewBox "0 0 60 60", width "40px" ]
+        svg [ height "35px", viewBox "0 0 60 60", width "35px" ]
             [ g [ fill "none", stroke "none", strokeWidth "1" ]
                 [ circle
                     [ cx "30", cy "30", fill "#FFD966", id "Oval-Copy-4", r "30" ]
@@ -43,7 +43,7 @@ half clickMsg =
 v : msg -> Svg msg
 v clickMsg =
     wrapper clickMsg <|
-        svg [ height "40px", viewBox "0 0 60 60", width "40px" ]
+        svg [ height "35px", viewBox "0 0 60 60", width "35px" ]
             [ g [ fill "none", stroke "none", strokeWidth "1" ]
                 [ circle
                     [ cx "30", cy "30", fill "#B8E68A", id "Oval-2", r "30" ]
@@ -58,7 +58,7 @@ v clickMsg =
 x : msg -> Svg msg
 x clickMsg =
     wrapper clickMsg <|
-        svg [ height "40px", viewBox "0 0 60 60", width "40px" ]
+        svg [ height "35px", viewBox "0 0 60 60", width "35px" ]
             [ g [ fill "none", stroke "none", strokeWidth "1" ]
                 [ circle
                     [ cx "30", cy "30", fill "#FF9999", id "Oval-2-Copy", r "30" ]

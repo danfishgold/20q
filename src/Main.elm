@@ -611,7 +611,7 @@ questionView index { question, answer, status } =
             div
                 (css
                     [ property "display" "grid"
-                    , property "grid-template-columns" "1.5rem 1fr 7rem"
+                    , property "grid-template-columns" "1.5rem 1fr 6rem"
                     , property "grid-column-gap" "1rem"
                     , paddingTop <| px 10
                     , paddingBottom <| px 10
