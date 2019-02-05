@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Array exposing (Array)
 import Browser exposing (application)
+import Browser.Dom as Dom
 import Browser.Navigation as Nav
 import Css exposing (..)
 import Css.Global exposing (..)
@@ -12,6 +13,7 @@ import Html.Styled.Events exposing (onClick)
 import Http
 import Icons
 import Json.Decode as Json
+import Task
 import Url exposing (Url)
 
 
@@ -21,6 +23,10 @@ get url toMsg decoder =
         { url = url
         , expect = Http.expectJson toMsg decoder
         }
+
+
+scrollToTop =
+    Task.perform (\_ -> NoOp) (Dom.setViewport 0 0)
 
 
 type alias Model =
@@ -93,8 +99,8 @@ pageToUrl page =
             "/#" ++ quizId
 
 
-pageToStateAndCommand : Page -> ( State, Cmd Msg )
-pageToStateAndCommand page =
+pageToStateAndCommand : Page -> Maybe State -> ( State, Cmd Msg )
+pageToStateAndCommand page previousState =
     case page of
         QuizList ->
             ( LoadingQuizListPage
@@ -104,7 +110,16 @@ pageToStateAndCommand page =
             )
 
         AQuiz quizId ->
-            ( LoadingQuizPageWithId quizId
+            ( case previousState of
+                Just (QuizListPage quizes) ->
+                    quizes
+                        |> List.filter (\{ id } -> id == quizId)
+                        |> List.head
+                        |> Maybe.map LoadingQuizPageWithMetadata
+                        |> Maybe.withDefault (LoadingQuizPageWithId quizId)
+
+                _ ->
+                    LoadingQuizPageWithId quizId
             , get ("/quizes/" ++ quizId)
                 HandleGetQuiz
                 (quizDecoder AnswerHidden)
@@ -151,6 +166,7 @@ type Msg
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url
     | RequestQuiz String
+    | NoOp
 
 
 main : Program () Model Msg
@@ -273,7 +289,7 @@ init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url key =
     let
         ( state, cmd ) =
-            pageToStateAndCommand (urlToPage url)
+            pageToStateAndCommand (urlToPage url) Nothing
     in
     ( { key = key
       , state = state
@@ -361,15 +377,18 @@ update msg model =
             if stateToPage model.state /= urlToPage url then
                 let
                     ( newState, cmd ) =
-                        pageToStateAndCommand (urlToPage url)
+                        pageToStateAndCommand (urlToPage url) (Just model.state)
                 in
-                ( { model | state = newState }, cmd )
+                ( { model | state = newState }, Cmd.batch [ cmd, scrollToTop ] )
 
             else
-                ( model, Cmd.none )
+                ( model, scrollToTop )
 
         RequestQuiz quizId ->
             ( model, Nav.pushUrl model.key (pageToUrl (AQuiz quizId)) )
+
+        NoOp ->
+            ( model, Cmd.none )
 
 
 setQuestionStatus : Int -> QuestionStatus -> Quiz -> Quiz
@@ -458,6 +477,7 @@ body model =
 
         LoadingQuizPageWithMetadata { title, image } ->
             [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ title ]
+            , quizImage image
             , text "רק רגע אחד..."
             ]
 
@@ -549,23 +569,7 @@ quizMetadataView { title, id, image, date } =
 quizBody : Quiz -> List (Html Msg)
 quizBody quiz =
     [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ quiz.title ]
-    , img
-        [ src quiz.image
-        , css
-            [ withMedia [ only screen [ Media.maxWidth transitionWidth ] ]
-                [ Css.width <| vw 100
-                , position relative
-                , left <| pct 50
-                , right <| pct 50
-                , marginLeft <| vw -50
-                , marginRight <| vw -50
-                ]
-            , withMedia [ only screen [ Media.minWidth transitionWidth ] ]
-                [ width <| pct 100
-                ]
-            ]
-        ]
-        []
+    , quizImage quiz.image
     , div
         [ css
             [ property "display" "grid"
@@ -594,6 +598,27 @@ quizBody quiz =
                             ++ " תשובות נכונות."
                 ]
     ]
+
+
+quizImage : String -> Html Msg
+quizImage image =
+    img
+        [ src image
+        , css
+            [ withMedia [ only screen [ Media.maxWidth transitionWidth ] ]
+                [ Css.width <| vw 100
+                , position relative
+                , left <| pct 50
+                , right <| pct 50
+                , marginLeft <| vw -50
+                , marginRight <| vw -50
+                ]
+            , withMedia [ only screen [ Media.minWidth transitionWidth ] ]
+                [ width <| pct 100
+                ]
+            ]
+        ]
+        []
 
 
 questionView : Int -> Question -> Html Msg
