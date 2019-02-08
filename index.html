@@ -9,7 +9,27 @@
   </head>
   <body>
     <script>
-      Elm.Main.init();
+      var app = Elm.Main.init();
+
+      app.ports.fetchStoredScores.subscribe(function() {
+        var dict = JSON.parse(window.localStorage.getItem("storedScores"));
+        app.ports.onStoredScoresFetch.send(dict);
+      });
+
+      app.ports.storeScore.subscribe(function(params) {
+        var quizId = params[0];
+        var questionIndex = params[1];
+        var score = params[2];
+        var dict = JSON.parse(window.localStorage.getItem("storedScores"));
+        if (!dict) {
+          dict = {};
+        }
+        if (!dict[quizId]) {
+          dict[quizId] = [];
+        }
+        dict[quizId][questionIndex] = score;
+        window.localStorage.setItem("storedScores", JSON.stringify(dict));
+      });
     </script>
   </body>
 </html>
