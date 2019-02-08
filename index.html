@@ -30,6 +30,10 @@
         dict[quizId][questionIndex] = score;
         window.localStorage.setItem("storedScores", JSON.stringify(dict));
       });
+
+      app.ports.clearStorage.subscribe(function() {
+        window.localStorage.setItem("storedScores", null);
+      });
     </script>
   </body>
 </html>

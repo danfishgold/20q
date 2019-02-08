@@ -108,6 +108,7 @@ type Msg
     | UrlChanged Url
     | RequestQuiz String
     | SetStoredScores ScoreStorage
+    | ClearLocalStorage
     | NoOp
 
 
@@ -122,6 +123,9 @@ port onStoredScoresFetch : (Json.Value -> msg) -> Sub msg
 
 
 port storeScore : ( String, Int, Float ) -> Cmd msg
+
+
+port clearStorage : () -> Cmd msg
 
 
 fetchLocallyStoredScores : Cmd msg
@@ -150,6 +154,11 @@ onLocallyStoredScoresFetch toMsg =
 locallyStoreScore : String -> Int -> Score -> Cmd msg
 locallyStoreScore quizId questionNumber score =
     storeScore ( quizId, questionNumber, scoreToFloat score )
+
+
+clearLocalStorage : Cmd msg
+clearLocalStorage =
+    clearStorage ()
 
 
 
@@ -504,6 +513,9 @@ update msg model =
         SetStoredScores scores ->
             ( { model | storedScores = scores }, Cmd.none )
 
+        ClearLocalStorage ->
+            ( { model | storedScores = Dict.empty }, clearLocalStorage )
+
         NoOp ->
             ( model, Cmd.none )
 
@@ -607,7 +619,7 @@ body model =
                 :: httpErrorBody model.showErrors err
 
         QuizListPage quizes ->
-            quizListBody quizes
+            quizListBody quizes model.storedScores
 
         LoadingQuizPageWithId _ ->
             [ h1 [] [ text "20 שאלות, והכותרת היא:" ]
@@ -682,12 +694,17 @@ httpErrorBody showErrors err =
                 ]
 
 
-quizListBody : List QuizMetadata -> List (Html Msg)
-quizListBody quizes =
+quizListBody : List QuizMetadata -> ScoreStorage -> List (Html Msg)
+quizListBody quizes storedScores =
     [ h1 [] [ text "20 שאלות" ]
     , quizes
         |> List.map quizMetadataView
         |> div []
+    , if not (Dict.isEmpty storedScores) then
+        button True [ onClick ClearLocalStorage ] [ text "נקה מטמון" ]
+
+      else
+        text ""
     ]
 
 
