@@ -592,17 +592,22 @@ quizBody quiz =
         Just ( score, halfCount ) ->
             h2 []
                 [ text <|
-                    if halfCount > 0 then
+                    if halfCount == 0 then
+                        "התוצאה הסופית: "
+                            ++ String.fromFloat score
+                            ++ " תשובות נכונות."
+
+                    else if halfCount == 1 then
+                        "התוצאה הסופית: "
+                            ++ String.fromFloat score
+                            ++ " תשובות נכונות, כולל חצי נקודה אחת."
+
+                    else
                         "התוצאה הסופית: "
                             ++ String.fromFloat score
                             ++ " תשובות נכונות, כולל "
                             ++ String.fromInt halfCount
                             ++ " חצאי נקודה."
-
-                    else
-                        "התוצאה הסופית: "
-                            ++ String.fromFloat score
-                            ++ " תשובות נכונות."
                 ]
     ]
 
