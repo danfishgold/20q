@@ -17,24 +17,42 @@ import Task
 import Url exposing (Url)
 
 
-get : String -> (Result Http.Error a -> msg) -> Json.Decoder a -> Cmd msg
-get url toMsg decoder =
-    Http.get
-        { url = url
-        , expect = Http.expectJson toMsg decoder
+
+-- MAIN
+
+
+main : Program () Model Msg
+main =
+    application
+        { init = init
+        , update = update
+        , view = view
+        , onUrlRequest = UrlRequested
+        , onUrlChange = UrlChanged
+        , subscriptions = subscriptions
         }
 
 
-scrollToTop =
-    Task.perform (\_ -> NoOp) (Dom.setViewport 0 0)
+
+-- TYPES
 
 
 type alias Model =
     { state : State
-    , cachedQuizes : Maybe (List (QuizMetadata {}))
+    , cachedQuizes : Maybe (List QuizMetadata)
     , showErrors : Bool
     , key : Nav.Key
     }
+
+
+type State
+    = LoadingQuizListPage
+    | QuizListPageError Http.Error
+    | QuizListPage (List QuizMetadata)
+    | LoadingQuizPageWithId String
+    | LoadingQuizPageWithMetadata QuizMetadata
+    | QuizPageError String Http.Error
+    | QuizPage Quiz
 
 
 type Page
@@ -42,14 +60,52 @@ type Page
     | AQuiz String
 
 
-type State
-    = LoadingQuizListPage
-    | QuizListPageError Http.Error
-    | QuizListPage (List (QuizMetadata {}))
-    | LoadingQuizPageWithId String
-    | LoadingQuizPageWithMetadata (QuizMetadata {})
-    | QuizPageError String Http.Error
-    | QuizPage Quiz
+type alias QuizMetadata =
+    { title : String
+    , id : String
+    , image : String
+    , date : String
+    }
+
+
+type alias Quiz =
+    { metadata : QuizMetadata
+    , questions : Array Question
+    }
+
+
+type alias Question =
+    { question : String
+    , answer : String
+    , status : QuestionStatus
+    }
+
+
+type QuestionStatus
+    = AnswerHidden
+    | AnswerShown
+    | Answered Score
+
+
+type Score
+    = Correct
+    | Incorrect
+    | Half
+
+
+type Msg
+    = HandleGetQuizList (Result Http.Error (List QuizMetadata))
+    | HandleGetQuiz (Result Http.Error Quiz)
+    | SetQuestionStatus Int QuestionStatus
+    | ShowErrors
+    | UrlRequested Browser.UrlRequest
+    | UrlChanged Url
+    | RequestQuiz String
+    | NoOp
+
+
+
+-- CONVERTERS AND DECODERS
 
 
 stateToPage : State -> Page
@@ -73,8 +129,8 @@ stateToPage state =
         QuizPageError id _ ->
             AQuiz id
 
-        QuizPage { id } ->
-            AQuiz id
+        QuizPage { metadata } ->
+            AQuiz metadata.id
 
 
 urlToPage : Url -> Page
@@ -100,7 +156,7 @@ pageToUrl page =
             "/#" ++ quizId
 
 
-pageToStateAndCommand : Page -> Maybe (List (QuizMetadata {})) -> ( State, Cmd Msg )
+pageToStateAndCommand : Page -> Maybe (List QuizMetadata) -> ( State, Cmd Msg )
 pageToStateAndCommand page cachedQuizes =
     case page of
         QuizList ->
@@ -132,58 +188,11 @@ pageToStateAndCommand page cachedQuizes =
             )
 
 
-type alias QuizMetadata a =
-    { a
-        | title : String
-        , id : String
-        , image : String
-        , date : String
-    }
-
-
-type alias Quiz =
-    QuizMetadata { questions : Array Question }
-
-
-type alias Question =
-    { question : String
-    , answer : String
-    , status : QuestionStatus
-    }
-
-
-type QuestionStatus
-    = AnswerHidden
-    | AnswerShown
-    | Answered Score
-
-
-type Score
-    = Correct
-    | Incorrect
-    | Half
-
-
-type Msg
-    = HandleGetQuizList (Result Http.Error (List (QuizMetadata {})))
-    | HandleGetQuiz (Result Http.Error Quiz)
-    | SetQuestionStatus Int QuestionStatus
-    | ShowErrors
-    | UrlRequested Browser.UrlRequest
-    | UrlChanged Url
-    | RequestQuiz String
-    | NoOp
-
-
-main : Program () Model Msg
-main =
-    application
-        { init = init
-        , update = update
-        , view = view
-        , onUrlRequest = UrlRequested
-        , onUrlChange = UrlChanged
-        , subscriptions = subscriptions
+get : String -> (Result Http.Error a -> msg) -> Json.Decoder a -> Cmd msg
+get url toMsg decoder =
+    Http.get
+        { url = url
+        , expect = Http.expectJson toMsg decoder
         }
 
 
@@ -248,7 +257,7 @@ scoreToFloat score =
             0.5
 
 
-quizMetadataDecoder : Json.Decoder (QuizMetadata {})
+quizMetadataDecoder : Json.Decoder QuizMetadata
 quizMetadataDecoder =
     Json.map4
         (\title image date id ->
@@ -272,11 +281,8 @@ quizQuestionsDecoder questionStatus =
 quizDecoder : QuestionStatus -> Json.Decoder Quiz
 quizDecoder questionStatus =
     Json.map2
-        (\{ id, title, image, date } questions ->
-            { title = title
-            , image = image
-            , date = date
-            , id = id
+        (\metadata questions ->
+            { metadata = metadata
             , questions = questions
             }
         )
@@ -289,6 +295,10 @@ questionDecoder status =
     Json.map2 (\q a -> Question q a status)
         (Json.field "question" Json.string)
         (Json.field "answer" Json.string)
+
+
+
+-- INIT
 
 
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -306,17 +316,8 @@ init () url key =
     )
 
 
-loadingQuizId : State -> Maybe String
-loadingQuizId state =
-    case state of
-        LoadingQuizPageWithId id ->
-            Just id
 
-        LoadingQuizPageWithMetadata { id } ->
-            Just id
-
-        _ ->
-            Nothing
+-- UPDATE
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -327,7 +328,7 @@ update msg model =
                 newState =
                     case ( loadingQuizId model.state, result ) of
                         ( Just id, Ok quiz ) ->
-                            if quiz.id == id then
+                            if quiz.metadata.id == id then
                                 QuizPage quiz
 
                             else
@@ -415,25 +416,21 @@ setQuestionStatus index newStatus quiz =
             { quiz | questions = newQuestions }
 
 
-transitionWidth =
-    px 700
+loadingQuizId : State -> Maybe String
+loadingQuizId state =
+    case state of
+        LoadingQuizPageWithId id ->
+            Just id
+
+        LoadingQuizPageWithMetadata { id } ->
+            Just id
+
+        _ ->
+            Nothing
 
 
-button isActive =
-    Html.Styled.styled Html.Styled.button
-        [ padding <| px 10
-        , borderRadius <| px 3
-        , textDecoration none
-        , border <| px 0
-        , if isActive then
-            Css.backgroundColor <| hex "4590E6"
 
-          else
-            Css.backgroundColor <| hex "B3D7FF"
-        , color <| hex "FFFFFF"
-        , fontSize <| rem 1.2
-        , property "-webkit-appearence" "none"
-        ]
+-- VIEW
 
 
 view : Model -> Browser.Document Msg
@@ -496,6 +493,27 @@ body model =
             quizBody quiz
 
 
+transitionWidth =
+    px 700
+
+
+button isActive =
+    Html.Styled.styled Html.Styled.button
+        [ padding <| px 10
+        , borderRadius <| px 3
+        , textDecoration none
+        , border <| px 0
+        , if isActive then
+            Css.backgroundColor <| hex "4590E6"
+
+          else
+            Css.backgroundColor <| hex "B3D7FF"
+        , color <| hex "FFFFFF"
+        , fontSize <| rem 1.2
+        , property "-webkit-appearence" "none"
+        ]
+
+
 httpErrorBody : Bool -> Http.Error -> List (Html Msg)
 httpErrorBody showErrors err =
     case err of
@@ -529,7 +547,7 @@ httpErrorBody showErrors err =
                 ]
 
 
-quizListBody : List (QuizMetadata {}) -> List (Html Msg)
+quizListBody : List QuizMetadata -> List (Html Msg)
 quizListBody quizes =
     [ h1 [] [ text "20 שאלות" ]
     , quizes
@@ -538,7 +556,7 @@ quizListBody quizes =
     ]
 
 
-quizMetadataView : QuizMetadata {} -> Html Msg
+quizMetadataView : QuizMetadata -> Html Msg
 quizMetadataView { title, id, image, date } =
     div
         [ css
@@ -575,8 +593,8 @@ quizMetadataView { title, id, image, date } =
 
 quizBody : Quiz -> List (Html Msg)
 quizBody quiz =
-    [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ quiz.title ]
-    , quizImage quiz.image
+    [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ quiz.metadata.title ]
+    , quizImage quiz.metadata.image
     , div
         [ css
             [ property "display" "grid"
@@ -734,6 +752,10 @@ backgroundColor score =
 
         Half ->
             "#FFD966"
+
+
+
+-- SUBSCRIPTIONS
 
 
 subscriptions : Model -> Sub Msg
