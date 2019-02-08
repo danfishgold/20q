@@ -149,7 +149,11 @@ app.get("/quizes/:quiz_id", function(request, response) {
 });
 
 app.get("/", function(request, response) {
-  response.sendFile(__dirname + "/views/index.html");
+  response.sendFile(__dirname + "/index.html");
+});
+
+app.get("/elm.js", function(request, response) {
+  response.sendFile(__dirname + "/elm.js");
 });
 
 const listener = app.listen(process.env.PORT | 5000, function() {
