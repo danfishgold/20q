@@ -152,6 +152,10 @@ app.get("/", function(request, response) {
   response.sendFile(__dirname + "/index.html");
 });
 
+app.get("/basement", function(request, response) {
+  response.sendFile(__dirname + "/index.html");
+});
+
 app.get("/elm.js", function(request, response) {
   response.sendFile(__dirname + "/elm.js");
 });

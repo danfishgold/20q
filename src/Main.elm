@@ -44,6 +44,7 @@ type alias Model =
     , storedScores : ScoreStorage
     , showErrors : Bool
     , key : Nav.Key
+    , isLampActive : Bool
     }
 
 
@@ -403,6 +404,7 @@ init () url key =
       , showErrors = False
       , cachedQuizes = Nothing
       , storedScores = Dict.empty
+      , isLampActive = url.path == "/basement"
       }
     , Cmd.batch [ cmd, fetchLocallyStoredScores ]
     )
@@ -474,12 +476,22 @@ update msg model =
 
                                 _ ->
                                     ( model.storedScores, Cmd.none )
+
+                        lampCmd =
+                            case status of
+                                Answered score ->
+                                    get (scoreAnimationUrl score)
+                                        (always NoOp)
+                                        (Json.succeed ())
+
+                                _ ->
+                                    Cmd.none
                     in
                     ( { model
                         | state = QuizPage (setQuestionStatus index status quiz)
                         , storedScores = newStoredScores
                       }
-                    , storageCmd
+                    , Cmd.batch [ storageCmd, lampCmd ]
                     )
 
                 _ ->
@@ -518,6 +530,19 @@ update msg model =
 
         NoOp ->
             ( model, Cmd.none )
+
+
+scoreAnimationUrl : Score -> String
+scoreAnimationUrl score =
+    case score of
+        Correct ->
+            "http://raspberrypi.local:8282/money_cab/green"
+
+        Incorrect ->
+            "http://raspberrypi.local:8282/money_cab/red"
+
+        Half ->
+            "http://raspberrypi.local:8282/money_cab/yellow"
 
 
 storageUpdateAndCommand :
