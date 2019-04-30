@@ -478,14 +478,18 @@ update msg model =
                                     ( model.storedScores, Cmd.none )
 
                         lampCmd =
-                            case status of
-                                Answered score ->
-                                    get (scoreAnimationUrl score)
-                                        (always NoOp)
-                                        (Json.succeed ())
+                            if model.isLampActive then
+                                case status of
+                                    Answered score ->
+                                        get (scoreAnimationUrl score)
+                                            (always NoOp)
+                                            (Json.succeed ())
 
-                                _ ->
-                                    Cmd.none
+                                    _ ->
+                                        Cmd.none
+
+                            else
+                                Cmd.none
                     in
                     ( { model
                         | state = QuizPage (setQuestionStatus index status quiz)
