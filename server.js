@@ -41,7 +41,7 @@ async function fetch_recent_quizes() {
 /// Fetch the questions and answers for all quizes in the original database.
 async function fetch_quiz_database() {
   // const yoanas_xls_url = "/st/inter/DB/heb/20q/20q.xlsx";
-  const db_url = "/st/c/work/guy/2018/21q/data.js";
+  const db_url = "/st/c/work/guy/2018/21q-project/data.js?ver5";
 
   const db_req = await request(base_url + db_url);
   const db_text = db_req.replace("\\'", "'").replace("var newData = ", "");
