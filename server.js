@@ -6,7 +6,6 @@ const low = require("lowdb");
 const FileSync = require("lowdb/adapters/FileSync");
 
 const db = low(new FileSync(".data/db.json"));
-db.set("quizes", []).write();
 
 const app = express();
 app.use(cors());
@@ -137,7 +136,16 @@ app.get("/quizes/latest", function(request, response) {
 
 app.get("/quizes/recent", function(request, response) {
   fetch_and_cache_recent_quizes()
-    .then(quizes => response.send(quizes))
+    .then(() =>
+      response.send(
+        db
+          .get("quizes")
+          .sortBy("id")
+          .takeRight(10)
+          .reverse()
+          .value()
+      )
+    )
     .catch(err => response.send({ err }));
 });
 

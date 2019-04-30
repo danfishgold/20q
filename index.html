@@ -28,7 +28,9 @@
           dict[quizId] = [];
         }
         dict[quizId][questionIndex] = score;
-        window.localStorage.setItem("storedScores", JSON.stringify(dict));
+        // TEMPORARILY DISABLED
+        // window.localStorage.setItem("storedScores", JSON.stringify(dict));
+        window.localStorage.setItem("storedScores", null);
       });
 
       app.ports.clearStorage.subscribe(function() {
