@@ -1,19 +1,23 @@
 {
   "name": "20q",
   "version": "1.0.0",
-  "description": "",
+  "description": "hi",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "npm run build:client && npm run build:functions",
+    "serve:functions": "netlify-lambda -c webpack.config.js serve src/server/functions",
+    "build:functions": "netlify-lambda -c webpack.config.js build src/server/functions",
+    "build:client": "yes | elm make src/client/Main.elm --output=public/elm.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.16.4",
-    "lowdb": "^1.0.0",
+    "dotenv": "^8.1.0",
+    "elm": "^0.19.0-no-deps",
+    "faunadb": "~2.7.0",
+    "json5": "^2.1.0",
     "moment": "^2.24.0",
-    "request": "^2.88.0",
-    "request-promise-native": "^1.0.5"
+    "netlify-lambda": "^1.6.3",
+    "node-fetch": "^2.6.0"
   }
 }

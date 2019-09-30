@@ -188,3 +188,10 @@ function min_by(array, key_function) {
 function range(n) {
   return Array.from({ length: n }, (v, k) => k)
 }
+
+c.query(
+  q.Map(
+    quizes.quizes,
+    q.Lambda('quiz', q.Create(q.Collection('quizes'), { data: q.Var('quiz') })),
+  ),
+)

@@ -67,7 +67,7 @@ type alias QuizMetadata =
     { title : String
     , id : String
     , image : String
-    , date : String
+    , date : Int
     }
 
 
@@ -224,7 +224,7 @@ pageToStateAndCommand page cachedQuizes =
             case cachedQuizes of
                 Nothing ->
                     ( LoadingQuizListPage
-                    , get "/quizes/recent"
+                    , get "/.netlify/functions/recent_quizes"
                         HandleGetQuizList
                         (Json.list quizMetadataDecoder)
                     )
@@ -243,7 +243,7 @@ pageToStateAndCommand page cachedQuizes =
 
                 _ ->
                     LoadingQuizPageWithId quizId
-            , get ("/quizes/" ++ quizId)
+            , get ("/.netlify/functions/quiz_by_id?quiz_id=" ++ quizId)
                 HandleGetQuiz
                 (quizDecoder AnswerHidden)
             )
@@ -361,7 +361,7 @@ quizMetadataDecoder =
         )
         (Json.field "title" Json.string)
         (Json.field "image" Json.string)
-        (Json.field "date" Json.string)
+        (Json.field "date" Json.int)
         (Json.field "id" Json.string)
 
 
@@ -773,7 +773,7 @@ quizMetadataView { title, id, image, date } =
                         ]
                     ]
                     [ text title ]
-                , Html.Styled.node "date" [] [ text date ]
+                -- , Html.Styled.node "date" [] [ text date ]
                 ]
             ]
         ]
