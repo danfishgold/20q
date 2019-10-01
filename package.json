@@ -14,7 +14,6 @@
   "dependencies": {
     "dotenv": "^8.1.0",
     "elm": "^0.19.0-no-deps",
-    "faunadb": "~2.7.0",
     "json5": "^2.1.0",
     "moment": "^2.24.0",
     "netlify-lambda": "^1.6.3",
