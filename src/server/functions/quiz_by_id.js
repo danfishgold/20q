@@ -17,6 +17,10 @@ export async function fetch_quiz(quiz_id) {
   }
 }
 export async function handler(event, context) {
-  const quiz = await fetch_quiz(event.queryStringParameters.quiz_id)
-  return { statusCode: 200, body: JSON.stringify(quiz) }
+  try {
+    const quiz = await fetch_quiz(event.queryStringParameters.quiz_id)
+    return { statusCode: 200, body: JSON.stringify(quiz) }
+  } catch (_) {
+    return { statusCode: 500 }
+  }
 }

@@ -8,7 +8,7 @@ import Css exposing (..)
 import Css.Global exposing (..)
 import Css.Media as Media exposing (only, screen, withMedia)
 import Dict exposing (Dict)
-import Html.Styled exposing (Html, div, h1, h2, img, p, span, text)
+import Html.Styled exposing (Html, a, div, h1, h2, img, p, span, text)
 import Html.Styled.Attributes exposing (css, href, src, style)
 import Html.Styled.Events exposing (onClick)
 import Http
@@ -367,7 +367,7 @@ quizMetadataDecoder =
 
 quizQuestionsDecoder : QuestionStatus -> Json.Decoder (Array Question)
 quizQuestionsDecoder questionStatus =
-    Json.field "questions" <| Json.array <| questionDecoder questionStatus
+    Json.field "items" <| Json.array <| questionDecoder questionStatus
 
 
 quizDecoder : QuestionStatus -> Json.Decoder Quiz
@@ -699,6 +699,14 @@ httpErrorBody showErrors err =
         Http.BadUrl url ->
             [ p [] [ text <| "יש בעיה בכתובת הזאת: " ++ url ] ]
 
+        Http.BadStatus 500 ->
+            [ p []
+                [ text <|
+                    "הארץ מעצבנים אז אי אפשר לגשת לשאלון הזה. אחרים (בתקווה) כן יעבדו."
+                ]
+            , a [ href "#" ] [ text "שאר השאלונים" ]
+            ]
+
         Http.BadStatus code ->
             [ p []
                 [ text <|
@@ -746,7 +754,7 @@ quizMetadataView { title, id, image, date } =
             , marginBottom <| px 30
             ]
         ]
-        [ Html.Styled.a
+        [ a
             [ href <| pageToUrl (AQuiz id)
             , css [ textDecoration none, color <| rgb 0 0 0 ]
             ]
@@ -773,6 +781,7 @@ quizMetadataView { title, id, image, date } =
                         ]
                     ]
                     [ text title ]
+
                 -- , Html.Styled.node "date" [] [ text date ]
                 ]
             ]
