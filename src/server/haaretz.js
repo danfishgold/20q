@@ -12,13 +12,22 @@ export async function fetch_quiz(quiz_id) {
   const idx2 = body.search(/inter20qObj.data = \[/)
   const share = json5.parse(body.slice(idx1 + 20, idx2))
   const rest = body.slice(idx2)
-  const items = json5.parse(rest.slice(19, rest.search('</script>')))
+  const items = json5
+    .parse(rest.slice(19, rest.search('</script>')))
+    .map(item => {
+      return {
+        question: item.question.replace(/&quot;/g, '"'),
+        answer: item.answer.replace(/&quot;/g, '"'),
+      }
+    })
 
   const date = body.match(
     /<meta property="article:published" itemprop="datePublished" content="(\d{4}-\d{2}-\d{2})/,
   )[1]
 
-  const title = body.match(/var articlePage\s*=\s*{.*?"name"\s*:\s*"(.*?)"/s)[1]
+  const title = body
+    .match(/var articlePage\s*=\s*{.*?"name"\s*:\s*"(.*?[^\\])"/s)[1]
+    .replace(/\\"/g, '"')
   const id = share.link.match(
     /https:\/\/www.haaretz.co.il\/magazine\/20questions\/([\d\.]+)/,
   )[1]
