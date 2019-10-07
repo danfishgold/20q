@@ -1,6 +1,6 @@
 import fetch from 'node-fetch'
 import * as json5 from 'json5'
-import * as moment from 'moment'
+import moment from 'moment'
 import { quiz_has_metadata } from './util'
 
 export async function fetch_quiz(quiz_id) {
@@ -26,7 +26,7 @@ export async function fetch_quiz(quiz_id) {
   )[1]
 
   const title = body
-    .match(/var articlePage\s*=\s*{.*?"name"\s*:\s*"(.*?[^\\])"/s)[1]
+    .match(/var articlePage\s*=\s*\{.*?"name"\s*:\s*"(.*?[^\\])"/s)[1]
     .replace(/\\"/g, '"')
   const id = share.link.match(
     /https:\/\/www.haaretz.co.il\/magazine\/20questions\/([\d\.]+)/,
