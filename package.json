@@ -4,28 +4,17 @@
   "description": "hi",
   "main": "index.js",
   "scripts": {
-    "start": "npm run build:client && npm run build:functions",
-    "serve:functions": "netlify-lambda -c webpack.config.js serve src/server/functions",
-    "build:functions": "netlify-lambda -c webpack.config.js build src/server/functions",
-    "build:client": "yes | elm make src/client/Main.elm --output=public/elm.js"
+    "start": "yes | elm make src/client/Main.elm --output=public/elm.js"
   },
-  "author": "",
+  "author": "danfishgold",
   "license": "ISC",
   "dependencies": {
     "airtable": "^0.7.1",
     "dotenv": "^8.1.0",
     "elm": "^0.19.0-no-deps",
-    "encoding": "^0.1.12",
     "json5": "^2.1.0",
     "moment": "^2.24.0",
-    "netlify-lambda": "^1.6.3",
     "node-fetch": "^2.6.0"
   },
-  "devDependencies": {
-    "@babel/cli": "^7.6.2",
-    "@babel/core": "^7.6.2",
-    "@babel/node": "^7.6.2",
-    "@babel/preset-env": "^7.6.2",
-    "core-js": "^3.2.1"
-  }
+  "devDependencies": {}
 }

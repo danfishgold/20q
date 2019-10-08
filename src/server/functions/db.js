@@ -1,5 +1,5 @@
-import 'dotenv/config'
-import Airtable from 'airtable'
+require('dotenv').config()
+const Airtable = require('airtable')
 
 Airtable.configure({
   endpointUrl: 'https://api.airtable.com',
@@ -7,7 +7,7 @@ Airtable.configure({
 })
 const base = Airtable.base('appzwY97blZl4alSE')
 
-export async function fetch_quiz(quiz_id) {
+async function fetch_quiz(quiz_id) {
   try {
     const results = await base('cached_quizes')
       .select({ filterByFormula: `{id} = ${quiz_id}`, maxRecords: 1 })
@@ -25,10 +25,12 @@ export async function fetch_quiz(quiz_id) {
   }
 }
 
-export async function create_quiz(quiz) {
+async function create_quiz(quiz) {
   await base('cached_quizes').create([
     {
       fields: { ...quiz, items: JSON.stringify(quiz.items) },
     },
   ])
 }
+
+module.exports = { fetch_quiz, create_quiz }

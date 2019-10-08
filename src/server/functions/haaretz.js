@@ -1,9 +1,9 @@
-import fetch from 'node-fetch'
-import * as json5 from 'json5'
-import moment from 'moment'
-import { quiz_has_metadata } from './util'
+const fetch = require('node-fetch')
+const json5 = require('json5')
+const moment = require('moment')
+const { quiz_has_metadata } = require('./util')
 
-export async function fetch_quiz(quiz_id) {
+async function fetch_quiz(quiz_id) {
   const req = await fetch(
     `https://www.haaretz.co.il/magazine/20questions/${quiz_id}`,
   )
@@ -42,7 +42,7 @@ export async function fetch_quiz(quiz_id) {
   }
 }
 
-export async function fetch_recent_quizes() {
+async function fetch_recent_quizes() {
   const req = await fetch(
     'https://www.haaretz.co.il/json/cmlink/7.7698855?vm=whtzResponsive&pidx=0',
   )
@@ -69,3 +69,5 @@ function fix_image_url(image_url) {
   // from the url ("w_1,h_1")
   return image_url.replace(/w_\d+,h_\d+,/g, '')
 }
+
+module.exports = { fetch_quiz, fetch_recent_quizes }

@@ -1,8 +1,8 @@
-import * as db from '../db'
-import * as haaretz from '../haaretz'
-import * as util from '../util'
+const db = require('./db')
+const haaretz = require('./haaretz')
+const util = require('./util')
 
-export async function fetch_quiz(quiz_id) {
+async function fetch_quiz(quiz_id) {
   const db_quiz = await db.fetch_quiz(quiz_id)
   if (
     !db_quiz ||
@@ -16,7 +16,7 @@ export async function fetch_quiz(quiz_id) {
     return db_quiz
   }
 }
-export async function handler(event, context) {
+async function handler(event, context) {
   try {
     const quiz = await fetch_quiz(event.queryStringParameters.quiz_id)
     return { statusCode: 200, body: JSON.stringify(quiz) }
@@ -24,3 +24,5 @@ export async function handler(event, context) {
     return { statusCode: 500, body: err.toString() }
   }
 }
+
+module.exports = { fetch_quiz, handler }

@@ -1,6 +1,7 @@
 node_modules
 elm-stuff
 elm.js
-.data/db.json
 .env
-/functions
+
+# Local Netlify folder
+.netlify
