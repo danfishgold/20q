@@ -9,7 +9,7 @@ import Css.Global exposing (..)
 import Css.Media as Media exposing (only, screen, withMedia)
 import Dict exposing (Dict)
 import Html.Styled exposing (Html, a, div, h1, h2, img, p, span, text)
-import Html.Styled.Attributes exposing (css, href, src, style)
+import Html.Styled.Attributes exposing (alt, css, href, src, style)
 import Html.Styled.Events exposing (onClick)
 import Http
 import Icons
@@ -760,6 +760,7 @@ quizMetadataView { title, id, image, date } =
             ]
             [ img
                 [ src image
+                , alt ""
                 , css
                     [ width <| pct 100
                     , padding <| px 0
