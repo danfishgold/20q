@@ -4,13 +4,14 @@
   "description": "hi",
   "main": "index.js",
   "scripts": {
-    "start": "yes | elm make src/client/Main.elm --output=public/elm.js"
+    "start": "npm run build",
+    "build": "npm run build:client",
+    "build:client": "yes | elm make src/client/Main.elm --output=public/elm.js"
   },
   "author": "danfishgold",
   "license": "ISC",
   "dependencies": {
     "airtable": "^0.7.1",
-    "dotenv": "^8.1.0",
     "elm": "^0.19.0-no-deps",
     "json5": "^2.1.0",
     "moment": "^2.24.0",
