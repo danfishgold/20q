@@ -3,11 +3,6 @@
   "version": "1.0.0",
   "description": "hi",
   "main": "index.js",
-  "scripts": {
-    "start": "npm run build",
-    "build": "npm run build:client",
-    "build:client": "yes | elm make src/client/Main.elm --output=public/elm.js"
-  },
   "author": "danfishgold",
   "license": "ISC",
   "dependencies": {

@@ -1,4 +1,4 @@
 [build]
-  functions = "./src/server/functions"
+  functions = "./src/functions"
   publish = "./public"
   command = "yes | elm make src/client/Main.elm --output=public/elm.js"
