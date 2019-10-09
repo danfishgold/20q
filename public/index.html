@@ -7,6 +7,12 @@
       content="20 שאלות של הארץ. כמו באתר של הארץ אבל יותר נחמד."
     />
     <link rel="canonical" href="https://20q.dan.city" />
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#138FC3" />
+    <link rel="icon" sizes="192x192" href="icons/icon-192.png" />
+    <link rel="icon" sizes="512x512" href="icons/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -14,33 +20,40 @@
   </head>
   <body>
     <script>
-      var app = Elm.Main.init();
+      var app = Elm.Main.init()
 
       app.ports.fetchStoredScores.subscribe(function() {
-        var dict = JSON.parse(window.localStorage.getItem("storedScores"));
-        app.ports.onStoredScoresFetch.send(dict);
-      });
+        var dict = JSON.parse(window.localStorage.getItem('storedScores'))
+        app.ports.onStoredScoresFetch.send(dict)
+      })
 
       app.ports.storeScore.subscribe(function(params) {
-        var quizId = params[0];
-        var questionIndex = params[1];
-        var score = params[2];
-        var dict = JSON.parse(window.localStorage.getItem("storedScores"));
+        var quizId = params[0]
+        var questionIndex = params[1]
+        var score = params[2]
+        var dict = JSON.parse(window.localStorage.getItem('storedScores'))
         if (!dict) {
-          dict = {};
+          dict = {}
         }
         if (!dict[quizId]) {
-          dict[quizId] = [];
+          dict[quizId] = []
         }
-        dict[quizId][questionIndex] = score;
+        dict[quizId][questionIndex] = score
         // TEMPORARILY DISABLED
         // window.localStorage.setItem("storedScores", JSON.stringify(dict));
-        window.localStorage.setItem("storedScores", null);
-      });
+        window.localStorage.setItem('storedScores', null)
+      })
 
       app.ports.clearStorage.subscribe(function() {
-        window.localStorage.setItem("storedScores", null);
-      });
+        window.localStorage.setItem('storedScores', null)
+      })
     </script>
   </body>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(function() {
+        console.log('Service Worker Registered')
+      })
+    }
+  </script>
 </html>
