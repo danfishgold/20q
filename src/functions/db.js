@@ -1,3 +1,6 @@
+if (process.env.NETLIFY_DEV) {
+  require('dotenv').config()
+}
 const Airtable = require('airtable')
 
 Airtable.configure({

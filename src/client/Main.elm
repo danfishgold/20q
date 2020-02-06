@@ -5,7 +5,7 @@ import Browser exposing (application)
 import Browser.Dom as Dom
 import Browser.Navigation as Nav
 import Css exposing (..)
-import Css.Global exposing (..)
+import Css.Global exposing (everything, global)
 import Css.Media as Media exposing (only, screen, withMedia)
 import Dict exposing (Dict)
 import Html.Styled exposing (Html, a, div, h1, h2, img, p, span, text)
