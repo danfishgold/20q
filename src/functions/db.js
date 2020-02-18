@@ -11,7 +11,7 @@ const base = Airtable.base('appzwY97blZl4alSE')
 
 async function fetch_quiz(quiz_id) {
   try {
-    const results = await base('cached_quizes')
+    const results = await base('cached_quizzes')
       .select({ filterByFormula: `{id} = ${quiz_id}`, maxRecords: 1 })
       .firstPage()
     const result = results[0]
@@ -28,7 +28,7 @@ async function fetch_quiz(quiz_id) {
 }
 
 async function create_quiz(quiz) {
-  await base('cached_quizes').create([
+  await base('cached_quizzes').create([
     {
       fields: { ...quiz, items: JSON.stringify(quiz.items) },
     },

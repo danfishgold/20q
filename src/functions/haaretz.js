@@ -42,13 +42,13 @@ async function fetch_quiz(quiz_id) {
   }
 }
 
-async function fetch_recent_quizes() {
+async function fetch_recent_quizzes() {
   const req = await fetch(
     'https://www.haaretz.co.il/json/cmlink/7.7698855?vm=whtzResponsive&pidx=0',
   )
-  const quizes_json = await req.json()
+  const quizzes_json = await req.json()
   return (
-    quizes_json.items
+    quizzes_json.items
       .map(quiz => {
         return {
           id: quiz.id,
@@ -70,4 +70,4 @@ function fix_image_url(image_url) {
   return image_url.replace(/w_\d+,h_\d+,/g, '')
 }
 
-module.exports = { fetch_quiz, fetch_recent_quizes }
+module.exports = { fetch_quiz, fetch_recent_quizzes }

@@ -1,6 +1,6 @@
 # 20q
 
-A web client for the Haaretz trivia quizes.
+A web client for the Haaretz trivia quizzes.
 
 [Check it out!](https://20q.glitch.me)
 

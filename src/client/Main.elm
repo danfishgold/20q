@@ -40,7 +40,7 @@ main =
 
 type alias Model =
     { state : State
-    , cachedQuizes : Maybe (List QuizMetadata)
+    , cachedQuizzes : Maybe (List QuizMetadata)
     , storedScores : ScoreStorage
     , showErrors : Bool
     , key : Nav.Key
@@ -218,24 +218,24 @@ pageToStateAndCommand :
     Page
     -> Maybe (List QuizMetadata)
     -> ( State, Cmd Msg )
-pageToStateAndCommand page cachedQuizes =
+pageToStateAndCommand page cachedQuizzes =
     case page of
         QuizList ->
-            case cachedQuizes of
+            case cachedQuizzes of
                 Nothing ->
                     ( LoadingQuizListPage
-                    , get "/.netlify/functions/recent_quizes"
+                    , get "/.netlify/functions/recent_quizzes"
                         HandleGetQuizList
                         (Json.list quizMetadataDecoder)
                     )
 
-                Just quizes ->
-                    ( QuizListPage quizes, Cmd.none )
+                Just quizzes ->
+                    ( QuizListPage quizzes, Cmd.none )
 
         AQuiz quizId ->
-            ( case cachedQuizes of
-                Just quizes ->
-                    quizes
+            ( case cachedQuizzes of
+                Just quizzes ->
+                    quizzes
                         |> List.filter (\{ id } -> id == quizId)
                         |> List.head
                         |> Maybe.map LoadingQuizPageWithMetadata
@@ -402,7 +402,7 @@ init () url key =
     ( { key = key
       , state = state
       , showErrors = False
-      , cachedQuizes = Nothing
+      , cachedQuizzes = Nothing
       , storedScores = Dict.empty
       , isLampActive = url.path == "/basement"
       }
@@ -450,8 +450,8 @@ update msg model =
                 ( newState, newCache ) =
                     if model.state == LoadingQuizListPage then
                         case result of
-                            Ok quizes ->
-                                ( QuizListPage quizes, Just quizes )
+                            Ok quizzes ->
+                                ( QuizListPage quizzes, Just quizzes )
 
                             Err error ->
                                 ( QuizListPageError error, Nothing )
@@ -459,7 +459,7 @@ update msg model =
                     else
                         ( model.state, Nothing )
             in
-            ( { model | state = newState, cachedQuizes = newCache }, Cmd.none )
+            ( { model | state = newState, cachedQuizzes = newCache }, Cmd.none )
 
         SetQuestionStatus index status ->
             case model.state of
@@ -516,7 +516,7 @@ update msg model =
             if stateToPage model.state /= urlToPage url then
                 let
                     ( newState, cmd ) =
-                        pageToStateAndCommand (urlToPage url) model.cachedQuizes
+                        pageToStateAndCommand (urlToPage url) model.cachedQuizzes
                 in
                 ( { model | state = newState }, cmd )
 
@@ -647,8 +647,8 @@ body model =
             h1 [] [ text "שיט, רגע יש שגיאה" ]
                 :: httpErrorBody model.showErrors err
 
-        QuizListPage quizes ->
-            quizListBody quizes model.storedScores
+        QuizListPage quizzes ->
+            quizListBody quizzes model.storedScores
 
         LoadingQuizPageWithId _ ->
             [ h1 [] [ text "20 שאלות, והכותרת היא:" ]
@@ -732,9 +732,9 @@ httpErrorBody showErrors err =
 
 
 quizListBody : List QuizMetadata -> ScoreStorage -> List (Html Msg)
-quizListBody quizes storedScores =
+quizListBody quizzes storedScores =
     [ h1 [] [ text "20 שאלות" ]
-    , quizes
+    , quizzes
         |> List.map quizMetadataView
         |> div []
     , if not (Dict.isEmpty storedScores) then

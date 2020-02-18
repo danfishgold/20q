@@ -1,6 +1,6 @@
 const haaretz = require('./haaretz')
 
-const recent_quizes = [
+const recent_quizzes = [
   {
     id: '1.8290332',
     image:
@@ -54,7 +54,7 @@ const recent_quizes = [
 ]
 
 async function handler(event, context) {
-  const recents = recent_quizes // await haaretz.fetch_recent_quizes()
+  const recents = recent_quizzes // await haaretz.fetch_recent_quizzes()
   return { statusCode: 200, body: JSON.stringify(recents) }
 }
 
