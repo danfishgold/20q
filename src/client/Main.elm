@@ -1,4 +1,4 @@
-port module Main exposing (main)
+module Main exposing (main)
 
 import Array exposing (Array)
 import Browser exposing (application)
@@ -7,7 +7,6 @@ import Browser.Navigation as Nav
 import Css exposing (..)
 import Css.Global exposing (everything, global)
 import Css.Media as Media exposing (only, screen, withMedia)
-import Dict exposing (Dict)
 import Html.Styled exposing (Html, a, div, h1, h2, img, p, span, text)
 import Html.Styled.Attributes exposing (alt, css, href, src, style)
 import Html.Styled.Events exposing (onClick)
@@ -41,7 +40,6 @@ main =
 type alias Model =
     { state : State
     , cachedQuizzes : Maybe (List QuizMetadata)
-    , storedScores : ScoreStorage
     , showErrors : Bool
     , key : Nav.Key
     , isLampActive : Bool
@@ -96,10 +94,6 @@ type Score
     | Half
 
 
-type alias ScoreStorage =
-    Dict String (Dict Int Score)
-
-
 type Msg
     = HandleGetQuizList (Result Http.Error (List QuizMetadata))
     | HandleGetQuiz (Result Http.Error Quiz)
@@ -108,58 +102,7 @@ type Msg
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url
     | RequestQuiz String
-    | SetStoredScores ScoreStorage
-    | ClearLocalStorage
     | NoOp
-
-
-
--- PORTS
-
-
-port fetchStoredScores : () -> Cmd msg
-
-
-port onStoredScoresFetch : (Json.Value -> msg) -> Sub msg
-
-
-port storeScore : ( String, Int, Float ) -> Cmd msg
-
-
-port clearStorage : () -> Cmd msg
-
-
-fetchLocallyStoredScores : Cmd msg
-fetchLocallyStoredScores =
-    fetchStoredScores ()
-
-
-onLocallyStoredScoresFetch : (ScoreStorage -> msg) -> Sub msg
-onLocallyStoredScoresFetch toMsg =
-    let
-        decoder =
-            Json.dict <|
-                Json.map intDictFromArray <|
-                    Json.array <|
-                        Json.map (Maybe.andThen floatToScore) <|
-                            Json.nullable Json.float
-    in
-    onStoredScoresFetch
-        (Json.decodeValue decoder
-            >> Result.toMaybe
-            >> Maybe.withDefault Dict.empty
-            >> toMsg
-        )
-
-
-locallyStoreScore : String -> Int -> Score -> Cmd msg
-locallyStoreScore quizId questionNumber score =
-    storeScore ( quizId, questionNumber, scoreToFloat score )
-
-
-clearLocalStorage : Cmd msg
-clearLocalStorage =
-    clearStorage ()
 
 
 
@@ -318,37 +261,6 @@ scoreToFloat score =
             0.5
 
 
-floatToScore : Float -> Maybe Score
-floatToScore f =
-    case Basics.round (2 * f) of
-        0 ->
-            Just Incorrect
-
-        1 ->
-            Just Half
-
-        2 ->
-            Just Correct
-
-        _ ->
-            Nothing
-
-
-intDictFromArray : Array (Maybe a) -> Dict Int a
-intDictFromArray arr =
-    Array.indexedMap Tuple.pair arr
-        |> Array.foldl
-            (\( idx, val ) dict ->
-                case val of
-                    Just x ->
-                        Dict.insert idx x dict
-
-                    Nothing ->
-                        dict
-            )
-            Dict.empty
-
-
 quizMetadataDecoder : Json.Decoder QuizMetadata
 quizMetadataDecoder =
     Json.map4
@@ -403,10 +315,9 @@ init () url key =
       , state = state
       , showErrors = False
       , cachedQuizzes = Nothing
-      , storedScores = Dict.empty
       , isLampActive = url.path == "/basement"
       }
-    , Cmd.batch [ cmd, fetchLocallyStoredScores ]
+    , Cmd.batch [ cmd ]
     )
 
 
@@ -423,16 +334,7 @@ update msg model =
                     case ( loadingQuizId model.state, result ) of
                         ( Just id, Ok quiz ) ->
                             if quiz.metadata.id == id then
-                                case Dict.get id model.storedScores of
-                                    Nothing ->
-                                        QuizPage quiz
-
-                                    Just existingScores ->
-                                        if Dict.size existingScores == Array.length quiz.questions then
-                                            QuizPage quiz
-
-                                        else
-                                            QuizPage (setQuizScores existingScores quiz)
+                                QuizPage quiz
 
                             else
                                 model.state
@@ -465,18 +367,6 @@ update msg model =
             case model.state of
                 QuizPage quiz ->
                     let
-                        ( newStoredScores, storageCmd ) =
-                            case status of
-                                Answered score ->
-                                    storageUpdateAndCommand
-                                        quiz.metadata.id
-                                        index
-                                        score
-                                        model.storedScores
-
-                                _ ->
-                                    ( model.storedScores, Cmd.none )
-
                         lampCmd =
                             if model.isLampActive then
                                 case status of
@@ -493,9 +383,8 @@ update msg model =
                     in
                     ( { model
                         | state = QuizPage (setQuestionStatus index status quiz)
-                        , storedScores = newStoredScores
                       }
-                    , Cmd.batch [ storageCmd, lampCmd ]
+                    , lampCmd
                     )
 
                 _ ->
@@ -526,12 +415,6 @@ update msg model =
         RequestQuiz quizId ->
             ( model, Nav.pushUrl model.key (pageToUrl (AQuiz quizId)) )
 
-        SetStoredScores scores ->
-            ( { model | storedScores = scores }, Cmd.none )
-
-        ClearLocalStorage ->
-            ( { model | storedScores = Dict.empty }, clearLocalStorage )
-
         NoOp ->
             ( model, Cmd.none )
 
@@ -547,32 +430,6 @@ scoreAnimationUrl score =
 
         Half ->
             "http://raspberrypi.local:8282/money_cab/yellow"
-
-
-storageUpdateAndCommand :
-    String
-    -> Int
-    -> Score
-    -> ScoreStorage
-    -> ( ScoreStorage, Cmd msg )
-storageUpdateAndCommand quizId questionIndex score storedScores =
-    let
-        quizScores =
-            Dict.get quizId storedScores
-                |> Maybe.withDefault Dict.empty
-                |> Dict.insert questionIndex score
-    in
-    ( Dict.insert quizId quizScores storedScores
-    , locallyStoreScore quizId questionIndex score
-    )
-
-
-setQuizScores : Dict Int Score -> Quiz -> Quiz
-setQuizScores existingScores quiz =
-    Dict.foldl
-        (\idx score q -> setQuestionStatus idx (Answered score) q)
-        quiz
-        existingScores
 
 
 setQuestionStatus : Int -> QuestionStatus -> Quiz -> Quiz
@@ -648,7 +505,7 @@ body model =
                 :: httpErrorBody model.showErrors err
 
         QuizListPage quizzes ->
-            quizListBody quizzes model.storedScores
+            quizListBody quizzes
 
         LoadingQuizPageWithId _ ->
             [ h1 [] [ text "20 שאלות, והכותרת היא:" ]
@@ -731,17 +588,12 @@ httpErrorBody showErrors err =
                 ]
 
 
-quizListBody : List QuizMetadata -> ScoreStorage -> List (Html Msg)
-quizListBody quizzes storedScores =
+quizListBody : List QuizMetadata -> List (Html Msg)
+quizListBody quizzes =
     [ h1 [] [ text "20 שאלות" ]
     , quizzes
         |> List.map quizMetadataView
         |> div []
-    , if not (Dict.isEmpty storedScores) then
-        button True [ onClick ClearLocalStorage ] [ text "נקה מטמון" ]
-
-      else
-        text ""
     ]
 
 
@@ -958,8 +810,4 @@ backgroundColor score =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    if Dict.isEmpty model.storedScores then
-        onLocallyStoredScoresFetch SetStoredScores
-
-    else
-        Sub.none
+    Sub.none
