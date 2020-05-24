@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Array exposing (Array)
+import Array
 import Browser exposing (application)
 import Browser.Dom as Dom
 import Browser.Navigation as Nav
@@ -12,8 +12,7 @@ import Html.Styled.Attributes exposing (alt, css, href, src, style)
 import Html.Styled.Events exposing (onClick)
 import Http
 import Icons
-import Json.Decode as Json
-import Task
+import Quiz exposing (Quiz)
 import Url exposing (Url)
 
 
@@ -39,7 +38,7 @@ main =
 
 type alias Model =
     { state : State
-    , cachedQuizzes : Maybe (List QuizMetadata)
+    , cachedQuizzes : Maybe (List Quiz.Metadata)
     , showErrors : Bool
     , key : Nav.Key
     }
@@ -48,63 +47,30 @@ type alias Model =
 type State
     = LoadingQuizListPage
     | QuizListPageError Http.Error
-    | QuizListPage (List QuizMetadata)
-    | LoadingQuizPageWithId String
-    | LoadingQuizPageWithMetadata QuizMetadata
-    | QuizPageError String Http.Error
+    | QuizListPage (List Quiz.Metadata)
+    | LoadingQuizPageWithId Quiz.Id
+    | LoadingQuizPageWithMetadata Quiz.Metadata
+    | QuizPageError Quiz.Id Http.Error
     | QuizPage Quiz
 
 
 type Page
     = QuizList
-    | AQuiz String
-
-
-type alias QuizMetadata =
-    { title : String
-    , id : String
-    , image : String
-    , date : Int
-    }
-
-
-type alias Quiz =
-    { metadata : QuizMetadata
-    , questions : Array Question
-    }
-
-
-type alias Question =
-    { question : String
-    , answer : String
-    , status : QuestionStatus
-    }
-
-
-type QuestionStatus
-    = AnswerHidden
-    | AnswerShown
-    | Answered Score
-
-
-type Score
-    = Correct
-    | Incorrect
-    | Half
+    | AQuiz Quiz.Id
 
 
 type Msg
-    = HandleGetQuizList (Result Http.Error (List QuizMetadata))
+    = HandleGetQuizList (Result Http.Error (List Quiz.Metadata))
     | HandleGetQuiz (Result Http.Error Quiz)
-    | SetQuestionStatus Int QuestionStatus
+    | SetQuestionStatus Int Quiz.QuestionStatus
     | ShowErrors
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url
-    | RequestQuiz String
+    | RequestQuiz Quiz.Id
 
 
 
--- CONVERTERS AND DECODERS
+-- NAVIGATION
 
 
 stateToPage : State -> Page
@@ -141,8 +107,8 @@ urlToPage url =
         Just "" ->
             QuizList
 
-        Just quizId ->
-            AQuiz quizId
+        Just quizIdString ->
+            AQuiz (Quiz.idFromUrlFragment quizIdString)
 
 
 pageToUrl : Page -> String
@@ -152,12 +118,12 @@ pageToUrl page =
             "/"
 
         AQuiz quizId ->
-            "/#" ++ quizId
+            "/#" ++ Quiz.idUrlFragment quizId
 
 
 pageToStateAndCommand :
     Page
-    -> Maybe (List QuizMetadata)
+    -> Maybe (List Quiz.Metadata)
     -> ( State, Cmd Msg )
 pageToStateAndCommand page cachedQuizzes =
     case page of
@@ -165,9 +131,7 @@ pageToStateAndCommand page cachedQuizzes =
             case cachedQuizzes of
                 Nothing ->
                     ( LoadingQuizListPage
-                    , get "/.netlify/functions/recent_quizzes"
-                        HandleGetQuizList
-                        (Json.list quizMetadataDecoder)
+                    , Quiz.getLatestQuizzes HandleGetQuizList
                     )
 
                 Just quizzes ->
@@ -184,119 +148,8 @@ pageToStateAndCommand page cachedQuizzes =
 
                 _ ->
                     LoadingQuizPageWithId quizId
-            , get ("/.netlify/functions/quiz_by_id?quiz_id=" ++ quizId)
-                HandleGetQuiz
-                (quizDecoder AnswerHidden)
+            , Quiz.get quizId HandleGetQuiz
             )
-
-
-get : String -> (Result Http.Error a -> msg) -> Json.Decoder a -> Cmd msg
-get url toMsg decoder =
-    Http.get
-        { url = url
-        , expect = Http.expectJson toMsg decoder
-        }
-
-
-finalScore : Quiz -> Maybe ( Float, Int )
-finalScore quiz =
-    let
-        maybeValues =
-            quiz.questions
-                |> Array.toList
-                |> List.map (.status >> statusToScoreValue)
-                |> flatten
-    in
-    case maybeValues of
-        Nothing ->
-            Nothing
-
-        Just values ->
-            Just
-                ( List.sum values
-                , List.length <| List.filter ((==) 0.5) values
-                )
-
-
-flatten : List (Maybe a) -> Maybe (List a)
-flatten maybes =
-    case maybes of
-        [] ->
-            Just []
-
-        Nothing :: _ ->
-            Nothing
-
-        (Just hd) :: tl ->
-            case flatten tl of
-                Nothing ->
-                    Nothing
-
-                Just tl_ ->
-                    Just (hd :: tl_)
-
-
-statusToScoreValue : QuestionStatus -> Maybe Float
-statusToScoreValue status =
-    case status of
-        Answered score ->
-            Just (scoreToFloat score)
-
-        _ ->
-            Nothing
-
-
-scoreToFloat : Score -> Float
-scoreToFloat score =
-    case score of
-        Correct ->
-            1
-
-        Incorrect ->
-            0
-
-        Half ->
-            0.5
-
-
-quizMetadataDecoder : Json.Decoder QuizMetadata
-quizMetadataDecoder =
-    Json.map4
-        (\title image date id ->
-            { title = title
-            , image = image
-            , date = date
-            , id = id
-            }
-        )
-        (Json.field "title" Json.string)
-        (Json.field "image" Json.string)
-        (Json.field "date" Json.int)
-        (Json.field "id" Json.string)
-
-
-quizQuestionsDecoder : QuestionStatus -> Json.Decoder (Array Question)
-quizQuestionsDecoder questionStatus =
-    Json.field "items" <| Json.array <| questionDecoder questionStatus
-
-
-quizDecoder : QuestionStatus -> Json.Decoder Quiz
-quizDecoder questionStatus =
-    Json.map2
-        (\metadata questions ->
-            { metadata = metadata
-            , questions = questions
-            }
-        )
-        quizMetadataDecoder
-        (quizQuestionsDecoder questionStatus)
-
-
-questionDecoder : QuestionStatus -> Json.Decoder Question
-questionDecoder status =
-    Json.map2 (\q a -> Question q a status)
-        (Json.field "question" Json.string)
-        (Json.field "answer" Json.string)
 
 
 
@@ -364,7 +217,7 @@ update msg model =
             case model.state of
                 QuizPage quiz ->
                     ( { model
-                        | state = QuizPage (setQuestionStatus index status quiz)
+                        | state = QuizPage (Quiz.setQuestionStatus index status quiz)
                       }
                     , Cmd.none
                     )
@@ -398,24 +251,7 @@ update msg model =
             ( model, Nav.pushUrl model.key (pageToUrl (AQuiz quizId)) )
 
 
-setQuestionStatus : Int -> QuestionStatus -> Quiz -> Quiz
-setQuestionStatus index newStatus quiz =
-    case Array.get index quiz.questions of
-        Nothing ->
-            quiz
-
-        Just question ->
-            let
-                newQuestion =
-                    { question | status = newStatus }
-
-                newQuestions =
-                    Array.set index newQuestion quiz.questions
-            in
-            { quiz | questions = newQuestions }
-
-
-loadingQuizId : State -> Maybe String
+loadingQuizId : State -> Maybe Quiz.Id
 loadingQuizId state =
     case state of
         LoadingQuizPageWithId id ->
@@ -554,7 +390,7 @@ httpErrorBody showErrors err =
                 ]
 
 
-quizListBody : List QuizMetadata -> List (Html Msg)
+quizListBody : List Quiz.Metadata -> List (Html Msg)
 quizListBody quizzes =
     [ h1 [] [ text "20 שאלות" ]
     , quizzes
@@ -563,7 +399,7 @@ quizListBody quizzes =
     ]
 
 
-quizMetadataView : QuizMetadata -> Html Msg
+quizMetadataView : Quiz.Metadata -> Html Msg
 quizMetadataView { title, id, image, date } =
     div
         [ css
@@ -619,7 +455,7 @@ quizBody quiz =
         (Array.toList quiz.questions
             |> List.indexedMap questionView
         )
-    , case finalScore quiz of
+    , case Quiz.finalScore quiz of
         Nothing ->
             text ""
 
@@ -667,7 +503,7 @@ quizImage image =
         []
 
 
-questionView : Int -> Question -> Html Msg
+questionView : Int -> Quiz.Question -> Html Msg
 questionView index { question, answer, status } =
     let
         col start end =
@@ -700,7 +536,7 @@ questionView index { question, answer, status } =
         showAnswerButton isActive =
             button isActive
                 [ col 3 4
-                , onClick (SetQuestionStatus index AnswerShown)
+                , onClick (SetQuestionStatus index Quiz.AnswerShown)
                 ]
                 [ text "תשובה" ]
 
@@ -715,8 +551,8 @@ questionView index { question, answer, status } =
                 [ text answer ]
 
         answerOptionsRow =
-            [ Correct, Half, Incorrect ]
-                |> List.map (setScoreSvg (Answered >> SetQuestionStatus index))
+            [ Quiz.Correct, Quiz.Half, Quiz.Incorrect ]
+                |> List.map (setScoreSvg (Quiz.Answered >> SetQuestionStatus index))
                 |> div
                     [ col 2 3
                     , css
@@ -727,10 +563,10 @@ questionView index { question, answer, status } =
                     ]
     in
     case status of
-        AnswerHidden ->
+        Quiz.AnswerHidden ->
             row [] [ questionNumberSpan, questionSpan, showAnswerButton True ]
 
-        AnswerShown ->
+        Quiz.AnswerShown ->
             row []
                 [ questionNumberSpan
                 , questionSpan
@@ -739,35 +575,22 @@ questionView index { question, answer, status } =
                 , answerOptionsRow
                 ]
 
-        Answered score ->
-            row [ style "background" (backgroundColor score) ]
+        Quiz.Answered score ->
+            row [ style "background" (Quiz.scoreBackgroundColor score) ]
                 [ questionNumberSpan, questionSpan, answerSpan ]
 
 
-setScoreSvg : (Score -> msg) -> Score -> Html.Styled.Html msg
+setScoreSvg : (Quiz.Score -> msg) -> Quiz.Score -> Html.Styled.Html msg
 setScoreSvg toMsg score =
     case score of
-        Correct ->
+        Quiz.Correct ->
             Icons.v (toMsg score)
 
-        Incorrect ->
+        Quiz.Incorrect ->
             Icons.x (toMsg score)
 
-        Half ->
+        Quiz.Half ->
             Icons.half (toMsg score)
-
-
-backgroundColor : Score -> String
-backgroundColor score =
-    case score of
-        Correct ->
-            "#B8E68A"
-
-        Incorrect ->
-            "#FF9999"
-
-        Half ->
-            "#FFD966"
 
 
 
