@@ -1,5 +1,6 @@
 module Quiz exposing
-    ( Id
+    ( FinalScore
+    , Id
     , Metadata
     , Question
     , QuestionStatus(..)
@@ -56,6 +57,12 @@ type Score
     | Half
 
 
+type alias FinalScore =
+    { total : Float
+    , halfCount : Int
+    }
+
+
 type Id
     = Id String
 
@@ -70,7 +77,7 @@ idUrlFragment (Id id) =
     id
 
 
-finalScore : Quiz -> Maybe ( Float, Int )
+finalScore : Quiz -> Maybe FinalScore
 finalScore quiz =
     let
         maybeValues =
@@ -85,9 +92,9 @@ finalScore quiz =
 
         Just values ->
             Just
-                ( List.sum values
-                , List.length <| List.filter ((==) 0.5) values
-                )
+                { total = List.sum values
+                , halfCount = List.length <| List.filter ((==) 0.5) values
+                }
 
 
 flatten : List (Maybe a) -> Maybe (List a)

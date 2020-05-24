@@ -13,7 +13,9 @@ import Html.Styled.Attributes exposing (alt, css, href, src, style)
 import Html.Styled.Events exposing (onClick)
 import Http
 import Icons
-import Page exposing (Page(..), State(..))
+import Page exposing (Page, Path(..))
+import Page.Quiz as Q
+import Page.QuizList as QL
 import Quiz exposing (Quiz)
 import Url exposing (Url)
 
@@ -39,7 +41,7 @@ main =
 
 
 type alias Model =
-    { pageState : Page.State
+    { page : Page
     , cachedQuizzes : Maybe (List Quiz.Metadata)
     , showErrors : Bool
     , key : Nav.Key
@@ -60,7 +62,7 @@ type Msg
 -- NAVIGATION
 
 
-initialPageStateAndCommand : Url -> Maybe (List Quiz.Metadata) -> ( Page.State, Cmd Msg )
+initialPageStateAndCommand : Url -> Maybe (List Quiz.Metadata) -> ( Page, Cmd Msg )
 initialPageStateAndCommand url cachedQuizzes =
     Page.initialStateAndCommand
         url
@@ -77,11 +79,11 @@ initialPageStateAndCommand url cachedQuizzes =
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url key =
     let
-        ( pageState, cmd ) =
+        ( page, cmd ) =
             initialPageStateAndCommand url Nothing
     in
     ( { key = key
-      , pageState = pageState
+      , page = page
       , showErrors = False
       , cachedQuizzes = Nothing
       }
@@ -97,45 +99,40 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         HandleGetQuiz result ->
-            let
-                newState =
-                    case ( model.pageState, result ) of
-                        ( Page.QuizPage _, Ok quiz ) ->
-                            if quiz.metadata.id == id then
-                                QuizPage quiz
+            ( { model
+                | page =
+                    case model.page of
+                        Page.QuizPage quizPage ->
+                            Page.QuizPage <| Q.onResponse result quizPage
 
-                            else
-                                model.pageState
-
-                        ( Just id, Err error ) ->
-                            QuizPageError id error
-
-                        ( Nothing, _ ) ->
-                            model.pageState
-            in
-            ( { model | pageState = newState }, Cmd.none )
+                        Page.QuizListPage _ ->
+                            model.page
+              }
+            , Cmd.none
+            )
 
         HandleGetQuizList result ->
-            let
-                ( newState, newCache ) =
-                    if model.pageState == LoadingQuizListPage then
-                        case result of
-                            Ok quizzes ->
-                                ( QuizListPage quizzes, Just quizzes )
+            case model.page of
+                Page.QuizPage _ ->
+                    ( model, Cmd.none )
 
-                            Err error ->
-                                ( QuizListPageError error, Nothing )
-
-                    else
-                        ( model.pageState, Nothing )
-            in
-            ( { model | pageState = newState, cachedQuizzes = newCache }, Cmd.none )
+                Page.QuizListPage _ ->
+                    let
+                        newState =
+                            QL.onResponse result
+                    in
+                    ( { model
+                        | page = Page.QuizListPage newState
+                        , cachedQuizzes = QL.quizzes newState
+                      }
+                    , Cmd.none
+                    )
 
         SetQuestionStatus index status ->
-            case model.pageState of
-                QuizPage quiz ->
+            case model.page of
+                Page.QuizPage (Q.Loaded quiz) ->
                     ( { model
-                        | pageState = QuizPage (Quiz.setQuestionStatus index status quiz)
+                        | page = Page.QuizPage (Q.Loaded (Quiz.setQuestionStatus index status quiz))
                       }
                     , Cmd.none
                     )
@@ -155,12 +152,12 @@ update msg model =
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            if Page.fromState model.pageState /= Page.fromUrl url then
+            if Page.fromState model.page /= Page.fromUrl url then
                 let
                     ( newState, cmd ) =
                         initialPageStateAndCommand url model.cachedQuizzes
                 in
-                ( { model | pageState = newState }, cmd )
+                ( { model | page = newState }, cmd )
 
             else
                 ( model, Cmd.none )
@@ -201,36 +198,12 @@ view model =
 
 body : Model -> List (Html Msg)
 body model =
-    case model.pageState of
-        LoadingQuizListPage ->
-            [ h1 [] [ text "20 שאלות" ]
-            , text "רק רגע אחד..."
-            ]
+    case model.page of
+        Page.QuizListPage quizListState ->
+            quizListBody model.showErrors quizListState
 
-        QuizListPageError err ->
-            h1 [] [ text "שיט, רגע יש שגיאה" ]
-                :: httpErrorBody model.showErrors err
-
-        QuizListPage quizzes ->
-            quizListBody quizzes
-
-        LoadingQuizPageWithId _ ->
-            [ h1 [] [ text "20 שאלות, והכותרת היא:" ]
-            , text "רק רגע אחד..."
-            ]
-
-        LoadingQuizPageWithMetadata { title, image } ->
-            [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ title ]
-            , quizImage image
-            , text "רק רגע אחד..."
-            ]
-
-        QuizPageError _ err ->
-            h1 [] [ text "20 שאלות והכותרת היא: שיט, רגע יש שגיאה" ]
-                :: httpErrorBody model.showErrors err
-
-        QuizPage quiz ->
-            quizBody quiz
+        Page.QuizPage quizState ->
+            quizBody model.showErrors quizState
 
 
 transitionWidth =
@@ -296,11 +269,22 @@ httpErrorBody showErrors err =
                 ]
 
 
-quizListBody : List Quiz.Metadata -> List (Html Msg)
-quizListBody quizzes =
-    [ h1 [] [ text "20 שאלות" ]
-    , div [] (List.map quizMetadataView quizzes)
-    ]
+quizListBody : Bool -> QL.State -> List (Html Msg)
+quizListBody showErrors quizListState =
+    case quizListState of
+        QL.Loading ->
+            [ h1 [] [ text "20 שאלות" ]
+            , text "רק רגע אחד..."
+            ]
+
+        QL.Error err ->
+            h1 [] [ text "שיט, רגע יש שגיאה" ]
+                :: httpErrorBody showErrors err
+
+        QL.Loaded quizzes ->
+            [ h1 [] [ text "20 שאלות" ]
+            , div [] (List.map quizMetadataView quizzes)
+            ]
 
 
 quizMetadataView : Quiz.Metadata -> Html Msg
@@ -346,43 +330,65 @@ quizMetadataView { title, id, image, date } =
         ]
 
 
-quizBody : Quiz -> List (Html Msg)
-quizBody quiz =
-    [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ quiz.metadata.title ]
-    , quizImage quiz.metadata.image
-    , div
-        [ css
-            [ property "display" "grid"
+quizBody : Bool -> Q.State -> List (Html Msg)
+quizBody showErrors state =
+    case state of
+        Q.Loading _ ->
+            [ h1 [] [ text "20 שאלות, והכותרת היא:" ]
+            , text "רק רגע אחד..."
             ]
-        ]
-        (Array.toList quiz.questions
-            |> List.indexedMap questionView
-        )
-    , case Quiz.finalScore quiz of
-        Nothing ->
-            text ""
 
-        Just ( score, halfCount ) ->
-            h2 []
-                [ text <|
-                    if halfCount == 0 then
-                        "התוצאה הסופית: "
-                            ++ String.fromFloat score
-                            ++ " תשובות נכונות."
+        Q.LoadingWithMetadata { title, image } ->
+            [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ title ]
+            , quizImage image
+            , text "רק רגע אחד..."
+            ]
 
-                    else if halfCount == 1 then
-                        "התוצאה הסופית: "
-                            ++ String.fromFloat score
-                            ++ " תשובות נכונות, כולל חצי נקודה אחת."
+        Q.Error _ err ->
+            h1 [] [ text "20 שאלות והכותרת היא: שיט, רגע יש שגיאה" ]
+                :: httpErrorBody showErrors err
 
-                    else
-                        "התוצאה הסופית: "
-                            ++ String.fromFloat score
-                            ++ " תשובות נכונות, כולל "
-                            ++ String.fromInt halfCount
-                            ++ " חצאי נקודה."
+        Q.Loaded quiz ->
+            [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ quiz.metadata.title ]
+            , quizImage quiz.metadata.image
+            , div
+                [ css
+                    [ property "display" "grid"
+                    ]
                 ]
-    ]
+                (Array.toList quiz.questions
+                    |> List.indexedMap questionView
+                )
+            , case Quiz.finalScore quiz of
+                Nothing ->
+                    text ""
+
+                Just score ->
+                    finalScore score
+            ]
+
+
+finalScore : Quiz.FinalScore -> Html msg
+finalScore { total, halfCount } =
+    h2 []
+        [ text <|
+            if halfCount == 0 then
+                "התוצאה הסופית: "
+                    ++ String.fromFloat total
+                    ++ " תשובות נכונות."
+
+            else if halfCount == 1 then
+                "התוצאה הסופית: "
+                    ++ String.fromFloat total
+                    ++ " תשובות נכונות, כולל חצי נקודה אחת."
+
+            else
+                "התוצאה הסופית: "
+                    ++ String.fromFloat total
+                    ++ " תשובות נכונות, כולל "
+                    ++ String.fromInt halfCount
+                    ++ " חצאי נקודה."
+        ]
 
 
 quizImage : String -> Html Msg

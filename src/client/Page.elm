@@ -1,86 +1,72 @@
 module Page exposing
     ( Page(..)
-    , QuizListPageState(..)
-    , QuizPageState(..)
-    , State(..)
+    , Path(..)
     , fromState
     , fromUrl
     , href
     , initialStateAndCommand
     , push
-    , quizPageId
     )
 
 import Browser.Navigation as Nav
 import Html.Styled
 import Html.Styled.Attributes
 import Http
+import Page.Quiz as Quiz
+import Page.QuizList as QuizList
 import Quiz exposing (Quiz)
 import Url exposing (Url)
 
 
-type State
-    = QuizListPage QuizListPageState
-    | QuizPage QuizPageState
-
-
-type QuizPageState
-    = LoadingQuiz Quiz.Id
-    | LoadingQuizWithMetadata Quiz.Metadata
-    | QuizError Quiz.Id Http.Error
-    | LoadedQuiz Quiz
-
-
-type QuizListPageState
-    = LoadingQuizList
-    | QuizListError Http.Error
-    | LoadedQuizList (List Quiz.Metadata)
-
-
 type Page
-    = QuizList
+    = QuizListPage QuizList.State
+    | QuizPage Quiz.State
+
+
+type Path
+    = RecentQuizzes
     | AQuiz Quiz.Id
 
 
-fromState : State -> Page
+fromState : Page -> Path
 fromState state =
     case state of
         QuizListPage _ ->
-            QuizList
+            RecentQuizzes
 
         QuizPage quizPage ->
-            AQuiz (quizPageId quizPage)
+            AQuiz (Quiz.quizId quizPage)
 
 
-fromUrl : Url -> Page
+fromUrl : Url -> Path
 fromUrl url =
     case url.fragment of
         Nothing ->
-            QuizList
+            RecentQuizzes
 
         Just "" ->
-            QuizList
+            RecentQuizzes
 
         Just quizIdString ->
             AQuiz (Quiz.idFromUrlFragment quizIdString)
 
 
-toUrl : Page -> String
+toUrl : Path -> String
 toUrl page =
     case page of
-        QuizList ->
+        RecentQuizzes ->
             "/"
 
         AQuiz quizId ->
             "/#" ++ Quiz.idUrlFragment quizId
 
 
-href : Page -> Html.Styled.Attribute msg
+href : Path -> Html.Styled.Attribute msg
 href page =
     Html.Styled.Attributes.href (toUrl page)
 
 
-push : Nav.Key -> Page -> Cmd msg
+push : Nav.Key -> Path -> Cmd msg
 push key page =
     Nav.pushUrl key (toUrl page)
 
@@ -96,18 +82,18 @@ initialStateAndCommand :
         { getLatestQuizzes : Cmd msg
         , getQuiz : Quiz.Id -> Cmd msg
         }
-    -> ( State, Cmd msg )
+    -> ( Page, Cmd msg )
 initialStateAndCommand url cachedQuizzes cmds =
     case fromUrl url of
-        QuizList ->
+        RecentQuizzes ->
             case cachedQuizzes of
                 Nothing ->
-                    ( QuizListPage LoadingQuizList
+                    ( QuizListPage QuizList.Loading
                     , cmds.getLatestQuizzes
                     )
 
                 Just quizzes ->
-                    ( QuizListPage (LoadedQuizList quizzes), Cmd.none )
+                    ( QuizListPage (QuizList.Loaded quizzes), Cmd.none )
 
         AQuiz quizId ->
             ( case cachedQuizzes of
@@ -115,27 +101,11 @@ initialStateAndCommand url cachedQuizzes cmds =
                     quizzes
                         |> List.filter (\{ id } -> id == quizId)
                         |> List.head
-                        |> Maybe.map LoadingQuizWithMetadata
-                        |> Maybe.withDefault (LoadingQuiz quizId)
+                        |> Maybe.map Quiz.LoadingWithMetadata
+                        |> Maybe.withDefault (Quiz.Loading quizId)
                         |> QuizPage
 
                 _ ->
-                    QuizPage (LoadingQuiz quizId)
+                    QuizPage (Quiz.Loading quizId)
             , cmds.getQuiz quizId
             )
-
-
-quizPageId : QuizPageState -> Quiz.Id
-quizPageId pageState =
-    case pageState of
-        LoadingQuiz id ->
-            id
-
-        LoadingQuizWithMetadata { id } ->
-            id
-
-        QuizError id _ ->
-            id
-
-        LoadedQuiz { metadata } ->
-            metadata.id
