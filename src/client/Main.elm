@@ -99,8 +99,8 @@ update msg model =
         HandleGetQuiz result ->
             let
                 newState =
-                    case ( Page.loadingQuizId model.pageState, result ) of
-                        ( Just id, Ok quiz ) ->
+                    case ( model.pageState, result ) of
+                        ( Page.QuizPage _, Ok quiz ) ->
                             if quiz.metadata.id == id then
                                 QuizPage quiz
 

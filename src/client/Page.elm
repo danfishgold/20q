@@ -1,12 +1,14 @@
 module Page exposing
     ( Page(..)
+    , QuizListPageState(..)
+    , QuizPageState(..)
     , State(..)
     , fromState
     , fromUrl
     , href
     , initialStateAndCommand
-    , loadingQuizId
     , push
+    , quizPageId
     )
 
 import Browser.Navigation as Nav
@@ -18,13 +20,21 @@ import Url exposing (Url)
 
 
 type State
-    = LoadingQuizListPage
-    | QuizListPageError Http.Error
-    | QuizListPage (List Quiz.Metadata)
-    | LoadingQuizPageWithId Quiz.Id
-    | LoadingQuizPageWithMetadata Quiz.Metadata
-    | QuizPageError Quiz.Id Http.Error
-    | QuizPage Quiz
+    = QuizListPage QuizListPageState
+    | QuizPage QuizPageState
+
+
+type QuizPageState
+    = LoadingQuiz Quiz.Id
+    | LoadingQuizWithMetadata Quiz.Metadata
+    | QuizError Quiz.Id Http.Error
+    | LoadedQuiz Quiz
+
+
+type QuizListPageState
+    = LoadingQuizList
+    | QuizListError Http.Error
+    | LoadedQuizList (List Quiz.Metadata)
 
 
 type Page
@@ -35,26 +45,11 @@ type Page
 fromState : State -> Page
 fromState state =
     case state of
-        LoadingQuizListPage ->
-            QuizList
-
-        QuizListPageError _ ->
-            QuizList
-
         QuizListPage _ ->
             QuizList
 
-        LoadingQuizPageWithId id ->
-            AQuiz id
-
-        LoadingQuizPageWithMetadata { id } ->
-            AQuiz id
-
-        QuizPageError id _ ->
-            AQuiz id
-
-        QuizPage { metadata } ->
-            AQuiz metadata.id
+        QuizPage quizPage ->
+            AQuiz (quizPageId quizPage)
 
 
 fromUrl : Url -> Page
@@ -107,12 +102,12 @@ initialStateAndCommand url cachedQuizzes cmds =
         QuizList ->
             case cachedQuizzes of
                 Nothing ->
-                    ( LoadingQuizListPage
+                    ( QuizListPage LoadingQuizList
                     , cmds.getLatestQuizzes
                     )
 
                 Just quizzes ->
-                    ( QuizListPage quizzes, Cmd.none )
+                    ( QuizListPage (LoadedQuizList quizzes), Cmd.none )
 
         AQuiz quizId ->
             ( case cachedQuizzes of
@@ -120,23 +115,27 @@ initialStateAndCommand url cachedQuizzes cmds =
                     quizzes
                         |> List.filter (\{ id } -> id == quizId)
                         |> List.head
-                        |> Maybe.map LoadingQuizPageWithMetadata
-                        |> Maybe.withDefault (LoadingQuizPageWithId quizId)
+                        |> Maybe.map LoadingQuizWithMetadata
+                        |> Maybe.withDefault (LoadingQuiz quizId)
+                        |> QuizPage
 
                 _ ->
-                    LoadingQuizPageWithId quizId
+                    QuizPage (LoadingQuiz quizId)
             , cmds.getQuiz quizId
             )
 
 
-loadingQuizId : State -> Maybe Quiz.Id
-loadingQuizId pageState =
+quizPageId : QuizPageState -> Quiz.Id
+quizPageId pageState =
     case pageState of
-        LoadingQuizPageWithId id ->
-            Just id
+        LoadingQuiz id ->
+            id
 
-        LoadingQuizPageWithMetadata { id } ->
-            Just id
+        LoadingQuizWithMetadata { id } ->
+            id
 
-        _ ->
-            Nothing
+        QuizError id _ ->
+            id
+
+        LoadedQuiz { metadata } ->
+            metadata.id
