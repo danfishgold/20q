@@ -1,4 +1,13 @@
-module Page exposing (Page(..), State(..), fromState, fromUrl, href, initialStateAndCommand, push)
+module Page exposing
+    ( Page(..)
+    , State(..)
+    , fromState
+    , fromUrl
+    , href
+    , initialStateAndCommand
+    , loadingQuizId
+    , push
+    )
 
 import Browser.Navigation as Nav
 import Html.Styled
@@ -118,3 +127,16 @@ initialStateAndCommand url cachedQuizzes cmds =
                     LoadingQuizPageWithId quizId
             , cmds.getQuiz quizId
             )
+
+
+loadingQuizId : State -> Maybe Quiz.Id
+loadingQuizId pageState =
+    case pageState of
+        LoadingQuizPageWithId id ->
+            Just id
+
+        LoadingQuizPageWithMetadata { id } ->
+            Just id
+
+        _ ->
+            Nothing

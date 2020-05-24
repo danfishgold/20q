@@ -12,10 +12,14 @@ module Quiz exposing
     , idUrlFragment
     , scoreBackgroundColor
     , setQuestionStatus
+    , setScoreSvg
     )
 
 import Array exposing (Array)
+import Date exposing (Date)
+import Html.Styled exposing (Html)
 import Http
+import Icons
 import Json.Decode as Json
 
 
@@ -29,7 +33,7 @@ type alias Metadata =
     { title : String
     , id : Id
     , image : String
-    , date : Int
+    , date : Date
     }
 
 
@@ -207,7 +211,7 @@ metadataDecoder =
         )
         (Json.field "title" Json.string)
         (Json.field "image" Json.string)
-        (Json.field "date" Json.int)
+        (Json.field "date" Date.decoder)
         (Json.field "id" Json.string)
 
 
@@ -216,3 +220,20 @@ questionDecoder status =
     Json.map2 (\q a -> Question q a status)
         (Json.field "question" Json.string)
         (Json.field "answer" Json.string)
+
+
+
+-- VIEW
+
+
+setScoreSvg : (Score -> msg) -> Score -> Html msg
+setScoreSvg toMsg score =
+    case score of
+        Correct ->
+            Icons.v (toMsg score)
+
+        Incorrect ->
+            Icons.x (toMsg score)
+
+        Half ->
+            Icons.half (toMsg score)

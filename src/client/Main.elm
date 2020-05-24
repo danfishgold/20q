@@ -7,6 +7,7 @@ import Browser.Navigation as Nav
 import Css exposing (..)
 import Css.Global exposing (everything, global)
 import Css.Media as Media exposing (only, screen, withMedia)
+import Date
 import Html.Styled exposing (Html, a, div, h1, h2, img, p, span, text)
 import Html.Styled.Attributes exposing (alt, css, href, src, style)
 import Html.Styled.Events exposing (onClick)
@@ -98,7 +99,7 @@ update msg model =
         HandleGetQuiz result ->
             let
                 newState =
-                    case ( loadingQuizId model.pageState, result ) of
+                    case ( Page.loadingQuizId model.pageState, result ) of
                         ( Just id, Ok quiz ) ->
                             if quiz.metadata.id == id then
                                 QuizPage quiz
@@ -166,19 +167,6 @@ update msg model =
 
         RequestQuiz quizId ->
             ( model, Page.push model.key (AQuiz quizId) )
-
-
-loadingQuizId : State -> Maybe Quiz.Id
-loadingQuizId pageState =
-    case pageState of
-        LoadingQuizPageWithId id ->
-            Just id
-
-        LoadingQuizPageWithMetadata { id } ->
-            Just id
-
-        _ ->
-            Nothing
 
 
 
@@ -249,6 +237,7 @@ transitionWidth =
     px 700
 
 
+button : Bool -> List (Html.Styled.Attribute msg) -> List (Html msg) -> Html msg
 button isActive =
     Html.Styled.styled Html.Styled.button
         [ padding <| px 10
@@ -310,9 +299,7 @@ httpErrorBody showErrors err =
 quizListBody : List Quiz.Metadata -> List (Html Msg)
 quizListBody quizzes =
     [ h1 [] [ text "20 שאלות" ]
-    , quizzes
-        |> List.map quizMetadataView
-        |> div []
+    , div [] (List.map quizMetadataView quizzes)
     ]
 
 
@@ -353,8 +340,7 @@ quizMetadataView { title, id, image, date } =
                         ]
                     ]
                     [ text title ]
-
-                -- , Html.Styled.node "date" [] [ text date ]
+                , Html.Styled.node "date" [] [ text <| Date.toString date ]
                 ]
             ]
         ]
@@ -423,11 +409,11 @@ quizImage image =
 questionView : Int -> Quiz.Question -> Html Msg
 questionView index { question, answer, status } =
     let
-        col start end =
+        col column =
             css
                 [ property
                     "grid-column"
-                    (String.fromInt start ++ " / " ++ String.fromInt end)
+                    (String.fromInt column)
                 , property "align-self" "start"
                 ]
 
@@ -445,21 +431,21 @@ questionView index { question, answer, status } =
                 children
 
         questionNumberSpan =
-            span [ col 1 2 ] [ text <| String.fromInt (index + 1) ++ "." ]
+            span [ col 1 ] [ text <| String.fromInt (index + 1) ++ "." ]
 
         questionSpan =
-            span [ col 2 3 ] [ text question ]
+            span [ col 2 ] [ text question ]
 
         showAnswerButton isActive =
             button isActive
-                [ col 3 4
+                [ col 3
                 , onClick (SetQuestionStatus index Quiz.AnswerShown)
                 ]
                 [ text "תשובה" ]
 
         answerSpan =
             span
-                [ col 2 3
+                [ col 2
                 , css
                     [ padding <| px 10
                     , Css.backgroundColor <| rgba 0 0 0 0.05
@@ -469,9 +455,9 @@ questionView index { question, answer, status } =
 
         answerOptionsRow =
             [ Quiz.Correct, Quiz.Half, Quiz.Incorrect ]
-                |> List.map (setScoreSvg (Quiz.Answered >> SetQuestionStatus index))
+                |> List.map (Quiz.setScoreSvg (Quiz.Answered >> SetQuestionStatus index))
                 |> div
-                    [ col 2 3
+                    [ col 2
                     , css
                         [ paddingTop <| px 15
                         , textAlign center
@@ -495,19 +481,6 @@ questionView index { question, answer, status } =
         Quiz.Answered score ->
             row [ style "background" (Quiz.scoreBackgroundColor score) ]
                 [ questionNumberSpan, questionSpan, answerSpan ]
-
-
-setScoreSvg : (Quiz.Score -> msg) -> Quiz.Score -> Html.Styled.Html msg
-setScoreSvg toMsg score =
-    case score of
-        Quiz.Correct ->
-            Icons.v (toMsg score)
-
-        Quiz.Incorrect ->
-            Icons.x (toMsg score)
-
-        Quiz.Half ->
-            Icons.half (toMsg score)
 
 
 
