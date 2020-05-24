@@ -42,7 +42,6 @@ type alias Model =
     , cachedQuizzes : Maybe (List QuizMetadata)
     , showErrors : Bool
     , key : Nav.Key
-    , isLampActive : Bool
     }
 
 
@@ -102,7 +101,6 @@ type Msg
     | UrlRequested Browser.UrlRequest
     | UrlChanged Url
     | RequestQuiz String
-    | NoOp
 
 
 
@@ -315,7 +313,6 @@ init () url key =
       , state = state
       , showErrors = False
       , cachedQuizzes = Nothing
-      , isLampActive = url.path == "/basement"
       }
     , Cmd.batch [ cmd ]
     )
@@ -366,25 +363,10 @@ update msg model =
         SetQuestionStatus index status ->
             case model.state of
                 QuizPage quiz ->
-                    let
-                        lampCmd =
-                            if model.isLampActive then
-                                case status of
-                                    Answered score ->
-                                        get (scoreAnimationUrl score)
-                                            (always NoOp)
-                                            (Json.succeed ())
-
-                                    _ ->
-                                        Cmd.none
-
-                            else
-                                Cmd.none
-                    in
                     ( { model
                         | state = QuizPage (setQuestionStatus index status quiz)
                       }
-                    , lampCmd
+                    , Cmd.none
                     )
 
                 _ ->
@@ -414,22 +396,6 @@ update msg model =
 
         RequestQuiz quizId ->
             ( model, Nav.pushUrl model.key (pageToUrl (AQuiz quizId)) )
-
-        NoOp ->
-            ( model, Cmd.none )
-
-
-scoreAnimationUrl : Score -> String
-scoreAnimationUrl score =
-    case score of
-        Correct ->
-            "http://raspberrypi.local:8282/money_cab/green"
-
-        Incorrect ->
-            "http://raspberrypi.local:8282/money_cab/red"
-
-        Half ->
-            "http://raspberrypi.local:8282/money_cab/yellow"
 
 
 setQuestionStatus : Int -> QuestionStatus -> Quiz -> Quiz
