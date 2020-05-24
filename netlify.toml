@@ -1,4 +1,11 @@
 [build]
-  functions = "./src/functions"
-  publish = "./public"
-  command = "yes | elm make src/client/Main.elm --output=public/elm.js"
+  functions = "src/functions"
+  publish = "public"
+  command = "npm run build"
+
+[dev]
+  framework = "#custom"
+  publish = "public"
+  command = "npm run watch"
+  targetPort = 8000
+  port = 8888
