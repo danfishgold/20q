@@ -3,8 +3,26 @@ module Icons exposing (half, v, x)
 import Css exposing (paddingLeft, paddingRight, px)
 import Html.Styled exposing (Html, span)
 import Html.Styled.Events exposing (onClick)
-import Svg.Styled exposing (..)
-import Svg.Styled.Attributes exposing (..)
+import Svg.Styled exposing (Svg, circle, g, path, polyline, svg)
+import Svg.Styled.Attributes
+    exposing
+        ( css
+        , cx
+        , cy
+        , d
+        , fill
+        , height
+        , id
+        , points
+        , r
+        , stroke
+        , strokeLinecap
+        , strokeLinejoin
+        , strokeWidth
+        , transform
+        , viewBox
+        , width
+        )
 
 
 wrapper : msg -> Svg msg -> Html msg

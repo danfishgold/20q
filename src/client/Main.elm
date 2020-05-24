@@ -1,23 +1,17 @@
 module Main exposing (main)
 
-import Array
 import Browser exposing (application)
-import Browser.Dom as Dom
 import Browser.Navigation as Nav
 import Css exposing (..)
 import Css.Global exposing (everything, global)
-import Css.Media as Media exposing (only, screen, withMedia)
-import Date
-import Html.Styled exposing (Html, a, div, h1, h2, img, p, span, text)
-import Html.Styled.Attributes exposing (alt, css, href, src, style)
-import Html.Styled.Events exposing (onClick)
+import Html.Styled exposing (Html)
+import Html.Styled.Attributes exposing (css)
 import Http
-import Icons
 import Page.Quiz as Quiz
 import Page.QuizList as QuizList
 import Path exposing (Path(..))
 import Quiz as Q exposing (Quiz)
-import SharedView exposing (..)
+import SharedView exposing (transitionWidth)
 import Url exposing (Url)
 
 
@@ -232,5 +226,5 @@ body model =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions model =
+subscriptions _ =
     Sub.none

@@ -1,8 +1,6 @@
 module Page.Quiz exposing (Model(..), body, init, onResponse, quizId)
 
--- import Date
-
-import Array exposing (Array)
+import Array
 import Css exposing (..)
 import Html.Styled exposing (Html, div, h1, h2, span, text)
 import Html.Styled.Attributes exposing (css)

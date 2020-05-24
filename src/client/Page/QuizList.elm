@@ -6,7 +6,7 @@ import Html.Styled exposing (Html, a, div, h1, h2, img, text)
 import Html.Styled.Attributes exposing (alt, css, src)
 import Http
 import Path
-import Quiz exposing (Quiz)
+import Quiz
 import SharedView exposing (httpErrorBody)
 
 

@@ -1,4 +1,4 @@
-module SharedView exposing (..)
+module SharedView exposing (button, httpErrorBody, quizImage, transitionWidth)
 
 import Css exposing (..)
 import Css.Media as Media exposing (only, screen, withMedia)
@@ -29,6 +29,7 @@ quizImage image =
         []
 
 
+transitionWidth : Px
 transitionWidth =
     px 700
 
