@@ -12,6 +12,7 @@ import Html.Styled.Attributes exposing (alt, css, href, src, style)
 import Html.Styled.Events exposing (onClick)
 import Http
 import Icons
+import Page exposing (Page(..), State(..))
 import Quiz exposing (Quiz)
 import Url exposing (Url)
 
@@ -37,26 +38,11 @@ main =
 
 
 type alias Model =
-    { state : State
+    { pageState : Page.State
     , cachedQuizzes : Maybe (List Quiz.Metadata)
     , showErrors : Bool
     , key : Nav.Key
     }
-
-
-type State
-    = LoadingQuizListPage
-    | QuizListPageError Http.Error
-    | QuizListPage (List Quiz.Metadata)
-    | LoadingQuizPageWithId Quiz.Id
-    | LoadingQuizPageWithMetadata Quiz.Metadata
-    | QuizPageError Quiz.Id Http.Error
-    | QuizPage Quiz
-
-
-type Page
-    = QuizList
-    | AQuiz Quiz.Id
 
 
 type Msg
@@ -73,83 +59,14 @@ type Msg
 -- NAVIGATION
 
 
-stateToPage : State -> Page
-stateToPage state =
-    case state of
-        LoadingQuizListPage ->
-            QuizList
-
-        QuizListPageError _ ->
-            QuizList
-
-        QuizListPage _ ->
-            QuizList
-
-        LoadingQuizPageWithId id ->
-            AQuiz id
-
-        LoadingQuizPageWithMetadata { id } ->
-            AQuiz id
-
-        QuizPageError id _ ->
-            AQuiz id
-
-        QuizPage { metadata } ->
-            AQuiz metadata.id
-
-
-urlToPage : Url -> Page
-urlToPage url =
-    case url.fragment of
-        Nothing ->
-            QuizList
-
-        Just "" ->
-            QuizList
-
-        Just quizIdString ->
-            AQuiz (Quiz.idFromUrlFragment quizIdString)
-
-
-pageToUrl : Page -> String
-pageToUrl page =
-    case page of
-        QuizList ->
-            "/"
-
-        AQuiz quizId ->
-            "/#" ++ Quiz.idUrlFragment quizId
-
-
-pageToStateAndCommand :
-    Page
-    -> Maybe (List Quiz.Metadata)
-    -> ( State, Cmd Msg )
-pageToStateAndCommand page cachedQuizzes =
-    case page of
-        QuizList ->
-            case cachedQuizzes of
-                Nothing ->
-                    ( LoadingQuizListPage
-                    , Quiz.getLatestQuizzes HandleGetQuizList
-                    )
-
-                Just quizzes ->
-                    ( QuizListPage quizzes, Cmd.none )
-
-        AQuiz quizId ->
-            ( case cachedQuizzes of
-                Just quizzes ->
-                    quizzes
-                        |> List.filter (\{ id } -> id == quizId)
-                        |> List.head
-                        |> Maybe.map LoadingQuizPageWithMetadata
-                        |> Maybe.withDefault (LoadingQuizPageWithId quizId)
-
-                _ ->
-                    LoadingQuizPageWithId quizId
-            , Quiz.get quizId HandleGetQuiz
-            )
+initialPageStateAndCommand : Url -> Maybe (List Quiz.Metadata) -> ( Page.State, Cmd Msg )
+initialPageStateAndCommand url cachedQuizzes =
+    Page.initialStateAndCommand
+        url
+        cachedQuizzes
+        { getLatestQuizzes = Quiz.getLatestQuizzes HandleGetQuizList
+        , getQuiz = Quiz.get HandleGetQuiz
+        }
 
 
 
@@ -159,11 +76,11 @@ pageToStateAndCommand page cachedQuizzes =
 init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init () url key =
     let
-        ( state, cmd ) =
-            pageToStateAndCommand (urlToPage url) Nothing
+        ( pageState, cmd ) =
+            initialPageStateAndCommand url Nothing
     in
     ( { key = key
-      , state = state
+      , pageState = pageState
       , showErrors = False
       , cachedQuizzes = Nothing
       }
@@ -181,26 +98,26 @@ update msg model =
         HandleGetQuiz result ->
             let
                 newState =
-                    case ( loadingQuizId model.state, result ) of
+                    case ( loadingQuizId model.pageState, result ) of
                         ( Just id, Ok quiz ) ->
                             if quiz.metadata.id == id then
                                 QuizPage quiz
 
                             else
-                                model.state
+                                model.pageState
 
                         ( Just id, Err error ) ->
                             QuizPageError id error
 
                         ( Nothing, _ ) ->
-                            model.state
+                            model.pageState
             in
-            ( { model | state = newState }, Cmd.none )
+            ( { model | pageState = newState }, Cmd.none )
 
         HandleGetQuizList result ->
             let
                 ( newState, newCache ) =
-                    if model.state == LoadingQuizListPage then
+                    if model.pageState == LoadingQuizListPage then
                         case result of
                             Ok quizzes ->
                                 ( QuizListPage quizzes, Just quizzes )
@@ -209,15 +126,15 @@ update msg model =
                                 ( QuizListPageError error, Nothing )
 
                     else
-                        ( model.state, Nothing )
+                        ( model.pageState, Nothing )
             in
-            ( { model | state = newState, cachedQuizzes = newCache }, Cmd.none )
+            ( { model | pageState = newState, cachedQuizzes = newCache }, Cmd.none )
 
         SetQuestionStatus index status ->
-            case model.state of
+            case model.pageState of
                 QuizPage quiz ->
                     ( { model
-                        | state = QuizPage (Quiz.setQuestionStatus index status quiz)
+                        | pageState = QuizPage (Quiz.setQuestionStatus index status quiz)
                       }
                     , Cmd.none
                     )
@@ -237,23 +154,23 @@ update msg model =
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            if stateToPage model.state /= urlToPage url then
+            if Page.fromState model.pageState /= Page.fromUrl url then
                 let
                     ( newState, cmd ) =
-                        pageToStateAndCommand (urlToPage url) model.cachedQuizzes
+                        initialPageStateAndCommand url model.cachedQuizzes
                 in
-                ( { model | state = newState }, cmd )
+                ( { model | pageState = newState }, cmd )
 
             else
                 ( model, Cmd.none )
 
         RequestQuiz quizId ->
-            ( model, Nav.pushUrl model.key (pageToUrl (AQuiz quizId)) )
+            ( model, Page.push model.key (AQuiz quizId) )
 
 
 loadingQuizId : State -> Maybe Quiz.Id
-loadingQuizId state =
-    case state of
+loadingQuizId pageState =
+    case pageState of
         LoadingQuizPageWithId id ->
             Just id
 
@@ -296,7 +213,7 @@ view model =
 
 body : Model -> List (Html Msg)
 body model =
-    case model.state of
+    case model.pageState of
         LoadingQuizListPage ->
             [ h1 [] [ text "20 שאלות" ]
             , text "רק רגע אחד..."
@@ -409,7 +326,7 @@ quizMetadataView { title, id, image, date } =
             ]
         ]
         [ a
-            [ href <| pageToUrl (AQuiz id)
+            [ Page.href (AQuiz id)
             , css [ textDecoration none, color <| rgb 0 0 0 ]
             ]
             [ img

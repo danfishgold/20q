@@ -161,8 +161,8 @@ scoreBackgroundColor score =
 -- HTTP
 
 
-get : Id -> (Result Http.Error Quiz -> msg) -> Cmd msg
-get (Id quizId) toMsg =
+get : (Result Http.Error Quiz -> msg) -> Id -> Cmd msg
+get toMsg (Id quizId) =
     Http.get
         { url = "/.netlify/functions/quiz_by_id?quiz_id=" ++ quizId
         , expect =
