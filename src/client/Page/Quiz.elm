@@ -2,12 +2,14 @@ module Page.Quiz exposing (Model(..), body, init, onResponse, quizId)
 
 import Array
 import Css exposing (..)
-import Html.Styled exposing (Html, div, h1, h2, span, text)
-import Html.Styled.Attributes exposing (css)
+import Date
+import Grid
+import Html.Styled exposing (Html, div, h2, img, main_, p, span, styled, text)
+import Html.Styled.Attributes exposing (css, src)
 import Html.Styled.Events exposing (onClick)
 import Http
 import Quiz exposing (Quiz)
-import SharedView exposing (button, httpErrorBody, quizImage)
+import SharedView exposing (button, httpErrorBody, onDesktop, onMobile, transitionWidth)
 
 
 type Model
@@ -79,32 +81,56 @@ onResponse response model =
 -- VIEW
 
 
-body : Bool -> { showErrors : msg, setQuestionStatus : Int -> Quiz.QuestionStatus -> msg } -> Model -> List (Html msg)
+body : Bool -> { showErrors : msg, setQuestionStatus : Int -> Quiz.QuestionStatus -> msg } -> Model -> Html msg
 body showErrors msgs model =
+    main_
+        [ css
+            [ Grid.display
+            , Grid.rowGap <| px 30
+            , padding2 (px 60) zero
+            ]
+        ]
+        (content showErrors msgs model)
+
+
+h1 : List (Html.Styled.Attribute msg) -> List (Html msg) -> Html msg
+h1 attrs =
+    Html.Styled.h1 (padded :: attrs)
+
+
+content : Bool -> { showErrors : msg, setQuestionStatus : Int -> Quiz.QuestionStatus -> msg } -> Model -> List (Html msg)
+content showErrors msgs model =
     case model of
         Loading _ ->
             [ h1 [] [ text "20 שאלות, והכותרת היא:" ]
-            , text "רק רגע אחד..."
+            , p [ padded ] [ text "רק רגע אחד..." ]
             ]
 
-        LoadingWithMetadata { title, image } ->
-            [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ title ]
+        LoadingWithMetadata { title, image, date } ->
+            [ div []
+                [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ title ]
+                , Html.Styled.node "date"
+                    [ padded, css [ display block, marginTop (px -15) ] ]
+                    [ text <| Date.toString date ]
+                ]
             , quizImage image
-            , text "רק רגע אחד..."
+            , p [ padded ] [ text "רק רגע אחד..." ]
             ]
 
         Error _ err ->
-            h1 [] [ text "20 שאלות והכותרת היא: שיט, רגע יש שגיאה" ]
-                :: httpErrorBody showErrors msgs.showErrors err
+            [ h1 [] [ text "20 שאלות והכותרת היא: שיט, רגע יש שגיאה" ]
+            , div [ padded ] (httpErrorBody showErrors msgs.showErrors err)
+            ]
 
         Loaded quiz ->
-            [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ quiz.metadata.title ]
-            , quizImage quiz.metadata.image
-            , div
-                [ css
-                    [ property "display" "grid"
-                    ]
+            [ div []
+                [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ quiz.metadata.title ]
+                , Html.Styled.node "date"
+                    [ padded, css [ display block, marginTop (px -15) ] ]
+                    [ text <| Date.toString quiz.metadata.date ]
                 ]
+            , quizImage quiz.metadata.image
+            , div []
                 (Array.toList quiz.questions
                     |> List.indexedMap (questionView msgs)
                 )
@@ -117,9 +143,15 @@ body showErrors msgs model =
             ]
 
 
+padded : Html.Styled.Attribute msg
+padded =
+    css
+        [ onMobile [ marginLeft <| px 30, marginRight <| px 30 ] ]
+
+
 finalScore : Quiz.FinalScore -> Html msg
 finalScore { total, halfCount } =
-    h2 []
+    h2 [ padded ]
         [ text <|
             if halfCount == 0 then
                 "התוצאה הסופית: "
@@ -140,48 +172,50 @@ finalScore { total, halfCount } =
         ]
 
 
+quizImage : String -> Html msg
+quizImage image =
+    img
+        [ src image
+        , css [ width <| pct 100 ]
+        ]
+        []
+
+
+questionDiv : List (Html.Styled.Attribute msg) -> List (Html msg) -> Html msg
+questionDiv =
+    styled div
+        [ Grid.display
+        , Grid.templateColumns [ "30px", "1fr", "80px" ]
+        , Grid.columnGap <| px 5
+        , Grid.rowGap <| px 15
+        , alignItems <| flexStart
+        , padding2 (px 15) (px 10)
+        ]
+
+
 questionView : { msgs | setQuestionStatus : Int -> Quiz.QuestionStatus -> msg } -> Int -> Quiz.Question -> Html msg
 questionView msgs index { question, answer, status } =
     let
-        col column =
-            css
-                [ property
-                    "grid-column"
-                    (String.fromInt column)
-                , property "align-self" "start"
-                ]
-
-        row attrs children =
-            div
-                (css
-                    [ property "display" "grid"
-                    , property "grid-template-columns" "1.5rem 1fr 6rem"
-                    , property "grid-column-gap" "1rem"
-                    , paddingTop <| px 10
-                    , paddingBottom <| px 10
-                    ]
-                    :: attrs
-                )
-                children
-
         questionNumberSpan =
-            span [ col 1 ] [ text <| String.fromInt (index + 1) ++ "." ]
+            span
+                [ css [ Grid.column 1 ] ]
+                [ text <| String.fromInt (index + 1) ++ "." ]
 
         questionSpan =
-            span [ col 2 ] [ text question ]
+            span [ css [ Grid.column 2 ] ] [ text question ]
 
         showAnswerButton isActive =
             button isActive
-                [ col 3
+                [ css [ Grid.column 3 ]
                 , onClick (msgs.setQuestionStatus index Quiz.AnswerShown)
                 ]
                 [ text "תשובה" ]
 
         answerSpan =
             span
-                [ col 2
-                , css
-                    [ padding <| px 10
+                [ css
+                    [ Grid.column2 1 -1
+                    , padding <| px 10
                     , Css.backgroundColor <| rgba 0 0 0 0.05
                     ]
                 ]
@@ -191,9 +225,8 @@ questionView msgs index { question, answer, status } =
             [ Quiz.Correct, Quiz.Half, Quiz.Incorrect ]
                 |> List.map (Quiz.setScoreSvg (Quiz.Answered >> msgs.setQuestionStatus index))
                 |> div
-                    [ col 2
-                    , css
-                        [ paddingTop <| px 15
+                    [ css
+                        [ Grid.column2 1 -1
                         , textAlign center
                         , property "direction" "ltr"
                         ]
@@ -201,10 +234,10 @@ questionView msgs index { question, answer, status } =
     in
     case status of
         Quiz.AnswerHidden ->
-            row [] [ questionNumberSpan, questionSpan, showAnswerButton True ]
+            questionDiv [] [ questionNumberSpan, questionSpan, showAnswerButton True ]
 
         Quiz.AnswerShown ->
-            row []
+            questionDiv []
                 [ questionNumberSpan
                 , questionSpan
                 , showAnswerButton False
@@ -213,7 +246,7 @@ questionView msgs index { question, answer, status } =
                 ]
 
         Quiz.Answered score ->
-            row
+            questionDiv
                 [ css [ backgroundColor <| hex <| Quiz.scoreBackgroundColor score ]
                 ]
                 [ questionNumberSpan, questionSpan, answerSpan ]

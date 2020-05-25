@@ -2,7 +2,8 @@ module Page.QuizList exposing (Model(..), body, init, onResponse, quizzes)
 
 import Css exposing (..)
 import Date
-import Html.Styled exposing (Html, a, div, h1, h2, img, text)
+import Grid
+import Html.Styled exposing (Html, a, div, h2, img, main_, p, styled, text)
 import Html.Styled.Attributes exposing (alt, css, src)
 import Http
 import Path
@@ -60,12 +61,31 @@ quizzes model =
 -- VIEW
 
 
-body : Bool -> { showErrors : msg } -> Model -> List (Html msg)
+body : Bool -> { showErrors : msg } -> Model -> Html msg
 body showErrors msgs model =
+    main_
+        [ css
+            [ Grid.display
+            , Grid.rowGap <| px 30
+            , padding <| px 30
+            , paddingTop <| px 60
+            ]
+        ]
+        (content showErrors msgs model)
+
+
+h1 =
+    styled Html.Styled.h1
+        [ margin zero
+        ]
+
+
+content : Bool -> { showErrors : msg } -> Model -> List (Html msg)
+content showErrors msgs model =
     case model of
         Loading ->
             [ h1 [] [ text "20 שאלות" ]
-            , text "רק רגע אחד..."
+            , p [] [ text "רק רגע אחד..." ]
             ]
 
         Error err ->
@@ -73,9 +93,8 @@ body showErrors msgs model =
                 :: httpErrorBody showErrors msgs.showErrors err
 
         Loaded quizzes_ ->
-            [ h1 [] [ text "20 שאלות" ]
-            , div [] (List.map quizMetadataView quizzes_)
-            ]
+            h1 [] [ text "20 שאלות" ]
+                :: List.map quizMetadataView quizzes_
 
 
 quizMetadataView : Quiz.Metadata -> Html msg
@@ -83,8 +102,8 @@ quizMetadataView { title, id, image, date } =
     div
         [ css
             [ boxShadow4 (px 0) (px 3) (px 5) (hex "999")
-            , marginTop <| px 30
-            , marginBottom <| px 30
+            , overflow hidden
+            , borderRadius <| px 5
             ]
         ]
         [ a
@@ -94,23 +113,14 @@ quizMetadataView { title, id, image, date } =
             [ img
                 [ src image
                 , alt ""
-                , css
-                    [ width <| pct 100
-                    , padding <| px 0
-                    , margin <| px 0
-                    ]
+                , css [ width <| pct 100 ]
                 ]
                 []
             , div
-                [ css
-                    [ padding <| px 10
-                    , margin <| px 0
-                    ]
-                ]
+                [ css [ padding3 (px 5) (px 20) (px 20) ] ]
                 [ h2
                     [ css
-                        [ padding <| px 0
-                        , marginBottom <| px 10
+                        [ marginBottom <| px 10
                         , marginTop <| px 0
                         ]
                     ]

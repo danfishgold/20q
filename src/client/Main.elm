@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser exposing (application)
 import Browser.Navigation as Nav
 import Css exposing (..)
-import Css.Global exposing (everything, global)
+import Css.Global exposing (global)
 import Html.Styled exposing (Html)
 import Html.Styled.Attributes exposing (css)
 import Http
@@ -11,7 +11,7 @@ import Page.Quiz as Quiz
 import Page.QuizList as QuizList
 import Path exposing (Path(..))
 import Quiz as Q exposing (Quiz)
-import SharedView exposing (transitionWidth)
+import SharedView exposing (fontSize, transitionWidth)
 import Url exposing (Url)
 
 
@@ -183,28 +183,22 @@ view model =
     { title = "20 שאלות"
     , body =
         [ global
-            [ everything
-                [ fontFamilies [ "Helvetica", "Arial" ]
-                ]
-            ]
-        , Html.Styled.node "main"
-            [ css
+            [ Css.Global.body
                 [ textAlign right
                 , property "direction" "rtl"
-                , width <| pct 95
-                , maxWidth <| transitionWidth
-                , marginLeft <| auto
-                , marginRight <| auto
-                , fontSize <| rem 1.2
+                , maxWidth <| calc transitionWidth minus (px 50)
+                , margin2 zero auto
+                , SharedView.fontSize
+                , SharedView.fontFamilies
                 ]
             ]
-            (body model)
+        , body model
         ]
             |> List.map Html.Styled.toUnstyled
     }
 
 
-body : Model -> List (Html Msg)
+body : Model -> Html Msg
 body model =
     case model.page of
         QuizListPage subModel ->

@@ -1,32 +1,20 @@
-module SharedView exposing (button, httpErrorBody, quizImage, transitionWidth)
+module SharedView exposing
+    ( button
+    , fontFamilies
+    , fontSize
+    , httpErrorBody
+    , onDesktop
+    , onMobile
+    , transitionWidth
+    )
 
 import Css exposing (..)
 import Css.Media as Media exposing (only, screen, withMedia)
 import Html.Styled exposing (Html, a, img, p, text)
-import Html.Styled.Attributes exposing (css, href, src)
+import Html.Styled.Attributes exposing (css, src)
 import Html.Styled.Events exposing (onClick)
 import Http
-
-
-quizImage : String -> Html msg
-quizImage image =
-    img
-        [ src image
-        , css
-            [ withMedia [ only screen [ Media.maxWidth transitionWidth ] ]
-                [ Css.width <| vw 100
-                , position relative
-                , left <| pct 50
-                , right <| pct 50
-                , marginLeft <| vw -50
-                , marginRight <| vw -50
-                ]
-            , withMedia [ only screen [ Media.minWidth transitionWidth ] ]
-                [ width <| pct 100
-                ]
-            ]
-        ]
-        []
+import Path
 
 
 transitionWidth : Px
@@ -34,10 +22,31 @@ transitionWidth =
     px 700
 
 
+onDesktop : List Style -> Style
+onDesktop =
+    withMedia [ only screen [ Media.minWidth transitionWidth ] ]
+
+
+onMobile : List Style -> Style
+onMobile =
+    withMedia [ only screen [ Media.maxWidth transitionWidth ] ]
+
+
+fontSize : Style
+fontSize =
+    Css.fontSize <| px 18
+
+
+fontFamilies : Style
+fontFamilies =
+    Css.fontFamilies [ "Helvetica", "Arial" ]
+
+
 button : Bool -> List (Html.Styled.Attribute msg) -> List (Html msg) -> Html msg
 button isActive =
     Html.Styled.styled Html.Styled.button
-        [ padding <| px 10
+        [ padding2 (px 5) (px 10)
+        , margin <| zero
         , borderRadius <| px 3
         , textDecoration none
         , border <| px 0
@@ -47,7 +56,8 @@ button isActive =
           else
             Css.backgroundColor <| hex "B3D7FF"
         , color <| hex "FFFFFF"
-        , fontSize <| rem 1.2
+        , fontSize
+        , fontFamilies
         , property "-webkit-appearence" "none"
         ]
 
@@ -66,7 +76,7 @@ httpErrorBody shouldShowErrors onShowErrors err =
                 [ text <|
                     "הארץ מעצבנים אז אי אפשר לגשת לשאלון הזה. אחרים (בתקווה) כן יעבדו."
                 ]
-            , a [ href "#" ] [ text "שאר השאלונים" ]
+            , p [] [ a [ Path.href Path.RecentQuizzes ] [ text "שאר השאלונים" ] ]
             ]
 
         Http.BadStatus code ->
