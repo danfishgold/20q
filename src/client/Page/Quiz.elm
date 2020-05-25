@@ -87,15 +87,14 @@ body showErrors msgs model =
         [ css
             [ Grid.display
             , Grid.rowGap <| px 30
-            , padding2 (px 60) zero
             ]
         ]
         (content showErrors msgs model)
 
 
 h1 : List (Html.Styled.Attribute msg) -> List (Html msg) -> Html msg
-h1 attrs =
-    Html.Styled.h1 (padded :: attrs)
+h1 =
+    styled Html.Styled.h1 [ padded, margin zero ]
 
 
 content : Bool -> { showErrors : msg, setQuestionStatus : Int -> Quiz.QuestionStatus -> msg } -> Model -> List (Html msg)
@@ -103,30 +102,30 @@ content showErrors msgs model =
     case model of
         Loading _ ->
             [ h1 [] [ text "20 שאלות, והכותרת היא:" ]
-            , p [ padded ] [ text "רק רגע אחד..." ]
+            , p [ css [ padded ] ] [ text "רק רגע אחד..." ]
             ]
 
         LoadingWithMetadata { title, image, date } ->
             [ div []
                 [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ title ]
                 , Html.Styled.node "date"
-                    [ padded, css [ display block, marginTop (px -15) ] ]
+                    [ css [ padded, display block, marginTop (px 15) ] ]
                     [ text <| Date.toString date ]
                 ]
             , quizImage image
-            , p [ padded ] [ text "רק רגע אחד..." ]
+            , p [ css [ padded ] ] [ text "רק רגע אחד..." ]
             ]
 
         Error _ err ->
             [ h1 [] [ text "20 שאלות והכותרת היא: שיט, רגע יש שגיאה" ]
-            , div [ padded ] (httpErrorBody showErrors msgs.showErrors err)
+            , div [ css [ padded ] ] (httpErrorBody showErrors msgs.showErrors err)
             ]
 
         Loaded quiz ->
             [ div []
                 [ h1 [] [ text <| "20 שאלות, והכותרת היא: " ++ quiz.metadata.title ]
                 , Html.Styled.node "date"
-                    [ padded, css [ display block, marginTop (px -15) ] ]
+                    [ css [ padded, display block, marginTop (px 15) ] ]
                     [ text <| Date.toString quiz.metadata.date ]
                 ]
             , quizImage quiz.metadata.image
@@ -143,15 +142,14 @@ content showErrors msgs model =
             ]
 
 
-padded : Html.Styled.Attribute msg
+padded : Style
 padded =
-    css
-        [ onMobile [ marginLeft <| px 30, marginRight <| px 30 ] ]
+    onMobile [ marginLeft <| px 30, marginRight <| px 30 ]
 
 
 finalScore : Quiz.FinalScore -> Html msg
 finalScore { total, halfCount } =
-    h2 [ padded ]
+    h2 [ css [ padded ] ]
         [ text <|
             if halfCount == 0 then
                 "התוצאה הסופית: "

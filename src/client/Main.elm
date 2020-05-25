@@ -187,7 +187,7 @@ view model =
                 [ textAlign right
                 , property "direction" "rtl"
                 , maxWidth <| calc transitionWidth minus (px 50)
-                , margin2 zero auto
+                , margin2 (px 60) auto
                 , SharedView.fontSize
                 , SharedView.fontFamilies
                 ]
