@@ -47,7 +47,7 @@ const recent_quizzes = [
 ]
 
 async function handler(event, context) {
-  const recents = recent_quizzes // await haaretz.fetch_recent_quizzes()
+  const recents = await haaretz.fetch_recent_quizzes()
   return { statusCode: 200, body: JSON.stringify(recents) }
 }
 

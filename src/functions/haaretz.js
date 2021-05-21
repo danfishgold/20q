@@ -2,10 +2,16 @@ const fetch = require('node-fetch')
 const json5 = require('json5')
 const moment = require('moment')
 const { quiz_has_metadata } = require('./util')
+const { cookies } = require('./haaretz_cookies')
+
+const cookie = Object.entries(cookies)
+  .map(([key, value]) => `${key}=${value}`)
+  .join(';')
 
 async function fetch_quiz(quiz_id) {
   const req = await fetch(
-    `https://www.haaretz.co.il/magazine/20questions/${quiz_id}`,
+    `https://www.haaretz.co.il/magazine/20questions/.premium.HIGHLIGHT-${quiz_id}?lts=${Date.now()}`,
+    { headers: { cookie } },
   )
   const body = await req.text()
   const idx1 = body.search(/inter20qObj.share = {/)
@@ -14,7 +20,7 @@ async function fetch_quiz(quiz_id) {
   const rest = body.slice(idx2)
   const items = json5
     .parse(rest.slice(19, rest.search('</script>')))
-    .map(item => {
+    .map((item) => {
       return {
         question: item.question.replace(/&quot;/g, '"'),
         answer: item.answer.replace(/&quot;/g, '"'),
@@ -29,7 +35,7 @@ async function fetch_quiz(quiz_id) {
     .match(/var articlePage\s*=\s*\{.*?"name"\s*:\s*"(.*?[^\\])"/s)[1]
     .replace(/\\"/g, '"')
   const id = share.link.match(
-    /https:\/\/www.haaretz.co.il\/magazine\/20questions\/([\d\.]+)/,
+    /https:\/\/www.haaretz.co.il\/magazine\/20questions\/\.premium\.HIGHLIGHT-([\d\.]+)/,
   )[1]
   const image = fix_image_url(share.img)
 
@@ -49,7 +55,7 @@ async function fetch_recent_quizzes() {
   const quizzes_json = await req.json()
   return (
     quizzes_json.items
-      .map(quiz => {
+      .map((quiz) => {
         return {
           id: quiz.id,
 

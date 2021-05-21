@@ -2,6 +2,7 @@ node_modules
 elm-stuff
 elm.js
 .env
+src/functions/haaretz_cookies.js
 
 # Local Netlify folder
 .netlify
