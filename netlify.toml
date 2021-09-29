@@ -6,6 +6,6 @@
 [dev]
   framework = "#custom"
   publish = "public"
-  command = "npm run watch"
+  command = "npm run dev"
   targetPort = 8000
   port = 8888

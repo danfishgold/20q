@@ -12,7 +12,15 @@ becomes possible again in the future. Oh well.
 
 ## Features
 
-It's very similar to their web client and app version, but it has three major improvements, two of which are relevant for most people:
+It's very similar to their web client and app version, but it has three major
+improvements, two of which are relevant for most people:
 
-1. You can grade half points (for those tricky questions when you know that Kiryat Ono has a sister city in the Netherlands, but you're just not sure which one.
+1. You can grade half points (for those tricky questions when you know that
+   Kiryat Ono has a sister city in the Netherlands, but you're just not sure
+   which one.
 2. It doesn't hide the answers for questions you've already answered
+
+## Running
+
+If you run `npm run dev` it won't work because you also need the serverless
+functions. Instead use `netlify dev`.
