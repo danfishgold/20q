@@ -23,4 +23,12 @@ improvements, two of which are relevant for most people:
 ## Running
 
 If you run `npm run dev` it won't work because you also need the serverless
-functions. Instead use `netlify dev`.
+functions and those functions need some `.env` variables. Instead use
+`netlify dev`, which will run `npm run dev` and also run the serverless
+functions and also fetch the environment variables from Netlify.
+
+## Deploying
+
+The site is hosted on Netlify. The environment variables are already there and
+the `netlify.toml` file tells Netlify how to build the site, which is with
+`npm run build`.
