@@ -50,12 +50,13 @@ button isActive =
         , borderRadius <| px 3
         , textDecoration none
         , border <| px 0
-        , if isActive then
-            Css.backgroundColor <| hex "4590E6"
+        , Css.backgroundColor <| hex "1657A2"
+        , color <|
+            if isActive then
+                hex "FFFFFF"
 
-          else
-            Css.backgroundColor <| hex "B3D7FF"
-        , color <| hex "FFFFFF"
+            else
+                hex "CFCFCF"
         , fontSize
         , fontFamilies
         , property "-webkit-appearence" "none"

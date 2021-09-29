@@ -1,7 +1,7 @@
 module Icons exposing (half, v, x)
 
-import Css exposing (paddingLeft, paddingRight, px)
-import Html.Styled exposing (Html, span)
+import Css exposing (backgroundColor, border, borderRadius, margin, marginLeft, marginRight, none, outline, padding, px, rgba, zero)
+import Html.Styled exposing (Html, button)
 import Html.Styled.Events exposing (onClick)
 import Svg.Styled exposing (Svg, circle, g, path, polyline, svg)
 import Svg.Styled.Attributes
@@ -27,13 +27,18 @@ import Svg.Styled.Attributes
 
 wrapper : msg -> Svg msg -> Html msg
 wrapper clickMsg element =
-    span
+    button
         [ onClick clickMsg
         , css
             [ Css.width <| px 35
             , Css.height <| px 35
-            , paddingLeft <| px 5
-            , paddingRight <| px 5
+            , padding zero
+            , margin zero
+            , border <| px 0
+            , marginLeft <| px 5
+            , marginRight <| px 5
+            , backgroundColor <| rgba 0 0 0 0
+            , borderRadius <| px 1000
             ]
         ]
         [ element ]

@@ -5,7 +5,7 @@ import Css exposing (..)
 import Date
 import Grid
 import Html.Styled exposing (Html, div, h2, img, main_, p, span, styled, text)
-import Html.Styled.Attributes exposing (css, src)
+import Html.Styled.Attributes exposing (alt, css, src)
 import Html.Styled.Events exposing (onClick)
 import Http
 import Quiz exposing (Quiz)
@@ -174,6 +174,7 @@ quizImage : String -> Html msg
 quizImage image =
     img
         [ src image
+        , alt ""
         , css [ width <| pct 100 ]
         ]
         []
